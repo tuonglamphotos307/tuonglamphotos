@@ -27,6 +27,8 @@ Phần mềm desktop để **tải xuống / tải lên Google Drive**, ý tư�
   - hàng đợi được lưu lại, có tuỳ chọn *Tự tiếp tục khi mở app*.
 - **Tăng tốc đa kết nối**: file từ 16 MB trở lên được chia thành nhiều đoạn và tải song song (mặc định 4 kết nối mỗi file, chỉnh được 1–8). Kết nối nào xong sớm sẽ tự nhận nửa phần còn lại của đoạn chậm nhất, nên không có kết nối nào ngồi chờ. Vị trí từng đoạn được lưu lại, nên vẫn tải tiếp được sau khi mất mạng hay tắt app. Nếu máy chủ không hỗ trợ tải theo đoạn thì app tự chuyển về một luồng.
 - **Đồng bộ thư mục an toàn**: bấm nút đồng bộ ở cột giữa để so sánh thư mục đang mở ở hai khung. App liệt kê file thiếu ở mỗi bên và file khác nhau, anh xem trước rồi mới chạy. Chỉ copy phần thiếu, **không bao giờ xoá**. File khác nhau chỉ bị thay khi anh tick chọn (bản mới hơn thắng, bản Drive cũ vẫn còn trong lịch sử phiên bản). Google Docs/Sheets/Slides và shortcut được bỏ qua.
+- **Lịch tự động** (mục *Lịch tự động* ở thanh bên): hẹn giờ **tải link** hoặc **đồng bộ thư mục** hằng ngày, vài ngày trong tuần, cách N phút/giờ, hoặc một lần. Đồng bộ theo lịch có thể chỉ tải lên (sao lưu), chỉ tải về, hoặc hai chiều, và không bao giờ xoá file. Mỗi lịch hiện lần chạy tiếp theo và kết quả lần trước, có nút *Chạy ngay*. Lịch chỉ chạy khi DriveDock đang mở; nếu lỡ giờ vì đã tắt app thì lịch chạy bù một lần ngay khi mở lại.
+- **Khung giờ chạy hàng đợi** (Cài đặt): chỉ truyền file trong khoảng giờ anh chọn, ví dụ 23:00–06:00 để dùng mạng ban đêm. Ngoài khung giờ, file đang chạy được tạm dừng và giữ nguyên tiến độ, sáng ra tự chạy tiếp.
 - **Giới hạn tốc độ** tải xuống và tải lên riêng biệt, áp dụng tức thì cho các file đang chạy.
 - **Kiểm tra MD5** sau khi tải xuống, phát hiện được file hỏng.
 - **Google Docs / Sheets / Slides** được xuất sang Office (hoặc PDF / OpenDocument), kể cả file lớn quá giới hạn của API export.
@@ -87,6 +89,7 @@ src/main/        tiến trình chính (Node)
   drive.js       client Drive REST v3: liệt kê, tải, export, resumable upload, retry
   transfers.js   logic tải xuống / tải lên từng file và thư mục
   segmented.js   tải một file lớn bằng nhiều kết nối
+  schedule.js    lịch tự động và khung giờ
   sync.js        so sánh hai thư mục để đồng bộ
   throttle.js    giới hạn tốc độ
   queue.js       hàng đợi: song song, tạm dừng, thử lại, lưu trạng thái

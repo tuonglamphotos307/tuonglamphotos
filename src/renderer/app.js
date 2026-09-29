@@ -455,6 +455,9 @@ function qRenderStats(stats) {
   badge.hidden = !n;
   badge.textContent = n;
   document.title = s.running && s.speed ? `DriveDock — ${fmtSpeed(s.speed)}` : 'DriveDock';
+  const gated = $('#q-gated');
+  gated.hidden = !s.gated;
+  if (s.gated) gated.innerHTML = `${icon('clock', 14)}Đang chờ khung giờ ${esc(S.settings.windowStart)}–${esc(S.settings.windowEnd)}. Hàng đợi sẽ tự chạy khi đến giờ.`;
   $('#live').hidden = !s.running;
   $('#live-speed').textContent = s.speed ? `${fmtSpeed(s.speed)} · ${s.running} file` : `${s.running} file đang chạy`;
 }
@@ -791,6 +794,13 @@ function openSettings() {
       </div>
       <label class="field"><span>Thư mục tải mặc định cho “Tải từ link”</span>
         <div class="inline"><input class="input" id="st-dir" spellcheck="false" placeholder="${esc(S.info.paths.downloads)}" /><button class="btn" id="st-pick">Chọn…</button></div></label>
+      <div class="section-title">Khung giờ chạy hàng đợi</div>
+      <label class="check"><input type="checkbox" id="st-win" ${s.windowEnabled ? 'checked' : ''} /> Chỉ truyền file trong khung giờ này (ví dụ ban đêm khi mạng rảnh)</label>
+      <div class="grid2">
+        <label class="field"><span>Từ</span><input class="input" id="st-ws" type="time" /></label>
+        <label class="field"><span>Đến</span><input class="input" id="st-we" type="time" /></label>
+      </div>
+      <small style="color:var(--muted);margin-top:-8px">Ngoài khung giờ, file đang chạy được tạm dừng (giữ nguyên tiến độ) và không bắt đầu file mới. Có thể qua nửa đêm, ví dụ 23:00 đến 06:00.</small>
       <label class="check"><input type="checkbox" id="st-md5" ${s.verifyMd5 ? 'checked' : ''} /> Kiểm tra MD5 sau khi tải xuống (phát hiện file hỏng)</label>
       <label class="check"><input type="checkbox" id="st-auto" ${s.autoResume ? 'checked' : ''} /> Tự tiếp tục hàng đợi khi mở app</label>
     </div>
@@ -803,6 +813,8 @@ function openSettings() {
   $('#st-dir', modal).value = s.defaultDownloadDir || '';
   $('#st-dl', modal).value = s.downloadLimitKBps || '';
   $('#st-ul', modal).value = s.uploadLimitKBps || '';
+  $('#st-ws', modal).value = s.windowStart;
+  $('#st-we', modal).value = s.windowEnd;
   for (const a of $$('a[data-url]', modal)) a.onclick = () => api.openExternal(a.dataset.url);
 
   $('#st-import', modal).onclick = async () => {
@@ -832,6 +844,9 @@ function openSettings() {
         connectionsPerFile: Number($('#st-conn', modal).value),
         downloadLimitKBps: Number($('#st-dl', modal).value) || 0,
         uploadLimitKBps: Number($('#st-ul', modal).value) || 0,
+        windowEnabled: $('#st-win', modal).checked,
+        windowStart: $('#st-ws', modal).value || '23:00',
+        windowEnd: $('#st-we', modal).value || '06:00',
         conflict: $('#st-conflict', modal).value,
         exportFormat: $('#st-export', modal).value,
         defaultDownloadDir: $('#st-dir', modal).value.trim(),
@@ -1203,6 +1218,7 @@ async function boot() {
   paneLocal.navigated();
   afterAuthChange();
   buildLocalNav();
+  initSchedule().catch((e) => console.error(e));
 
   const snap = await api.queue.snapshot();
   qApply({ changed: snap.tasks, removed: [], order: snap.tasks.map((t) => t.id), stats: snap.stats });

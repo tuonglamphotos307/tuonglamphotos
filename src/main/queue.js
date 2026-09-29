@@ -18,8 +18,9 @@ const EMIT_INTERVAL_MS = 250;
 class TransferQueue extends EventEmitter {
   // runners: { [task.type]: async (task, ctx) => ({ status?: 'done'|'skipped', note? }) }
   // hooks.onCancel(task): cleanup after a task is canceled (e.g. delete a partial file).
-  constructor({ file, runners, hooks = {}, getConcurrency = () => 3, getMaxRetries = () => 6, getAutoResume = () => false }) {
+  constructor({ file, runners, hooks = {}, getConcurrency = () => 3, getMaxRetries = () => 6, getAutoResume = () => false, gate = () => true }) {
     super();
+    this.gate = gate; // () => bool: false outside the allowed time window
     this.file = file;
     this.runners = runners;
     this.hooks = hooks;
@@ -69,6 +70,14 @@ class TransferQueue extends EventEmitter {
     fs.renameSync(tmp, this.file);
   }
 
+  // Tells the UI when the time window opens or closes (stats.gated changes).
+  _announceGate(closed) {
+    if (this._gateClosed === closed) return;
+    this._gateClosed = closed;
+    this.forceEmit = true;
+    this._emitSoon();
+  }
+
   _touch(task) {
     this.dirty.add(task.id);
     if (!this.emitTimer) {
@@ -83,7 +92,9 @@ class TransferQueue extends EventEmitter {
     const removed = [...this.removed];
     this.dirty.clear();
     this.removed.clear();
-    if (changed.length || removed.length) this.emit('update', { changed, removed, order: this.order.slice(), stats: this.stats() });
+    const force = this.forceEmit;
+    this.forceEmit = false;
+    if (changed.length || removed.length || force) this.emit('update', { changed, removed, order: this.order.slice(), stats: this.stats() });
     this._persist();
   }
 
@@ -108,7 +119,7 @@ class TransferQueue extends EventEmitter {
       } else if (t.status === 'queued') queued++;
       else if (t.status === 'error') errors++;
     }
-    return { running, queued, errors, speed, total: this.tasks.size };
+    return { running, queued, errors, speed, total: this.tasks.size, gated: !this.gate() };
   }
 
   // specs: partial tasks { type, name, source, dest, ... }. `after`: insert after this task id (used for folder children).
@@ -150,6 +161,17 @@ class TransferQueue extends EventEmitter {
     clearTimeout(this.wakeTimer);
     this.wakeTimer = null;
     if (this.stopped) return;
+    if (!this.gate()) {
+      // Outside the allowed window: stop what is running (progress is kept) and start nothing new.
+      for (const [id, live] of this.live) {
+        const t = this.tasks.get(id);
+        if (t && t.status === 'running') this._set(t, { status: 'queued', speed: 0, eta: null });
+        live.controller.abort(new Error('window closed'));
+      }
+      this._announceGate(true);
+      return;
+    }
+    this._announceGate(false);
     const limit = this.getConcurrency();
     let running = 0;
     for (const t of this.tasks.values()) if (t.status === 'running') running++;

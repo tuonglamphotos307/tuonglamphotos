@@ -400,6 +400,26 @@ kbd { font: 500 11px var(--f-mono); color: var(--muted); padding: 2px 6px; borde
 .q-empty span { display: block; max-width: 440px; line-height: 1.55; }
 .q-empty-art { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); flex: none; }
 
+/* ================================================================ schedules */
+.badge.quiet { background: var(--surface-3); color: var(--ink-2); }
+.sched-list { display: flex; flex-direction: column; gap: 8px; }
+.job-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px; align-items: start; padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--line); }
+.jr-name { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.jr-name svg { color: var(--accent); }
+.jr-desc, .jr-when, .jr-last { margin-top: 3px; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jr-when b { color: var(--ink); font-family: var(--f-mono); font-weight: 500; }
+.jr-last { display: flex; align-items: center; gap: 8px; }
+.jr-msg { overflow: hidden; text-overflow: ellipsis; }
+.jr-acts { display: flex; gap: 2px; }
+.jr-main { min-width: 0; }
+.job-row .switch { margin-top: 3px; }
+.days { display: flex; gap: 6px; flex-wrap: wrap; }
+.chk-chip input { position: absolute; opacity: 0; pointer-events: none; }
+.chk-chip span { display: grid; place-items: center; width: 40px; height: 34px; border-radius: 10px; border: 1px solid var(--line-2); color: var(--ink-2); cursor: pointer; font-weight: 500; }
+.chk-chip input:checked + span { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chk-chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.q-gated { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--warn-soft); color: var(--warn); font-size: 12px; font-weight: 500; border-bottom: 1px solid var(--line); }
+
 /* ================================================================ menu, toasts, modals */
 .menu { position: fixed; z-index: 50; min-width: 220px; padding: 6px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow-lg); animation: pop 0.12s var(--ease); }
 .menu button { display: flex; align-items: center; gap: 10px; width: 100%; height: 34px; padding: 0 10px; border-radius: 8px; color: var(--ink-2); text-align: left; white-space: nowrap; }

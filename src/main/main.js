@@ -12,6 +12,7 @@ const { createRunners, downloadSpec, uploadSpec } = require('./transfers');
 const { parseManyLinks } = require('./links');
 const local = require('./local');
 const { buildPlan } = require('./sync');
+const { Scheduler, inWindow } = require('./schedule');
 const crypto = require('crypto');
 
 if (!app.requestSingleInstanceLock()) {
@@ -33,6 +34,7 @@ let settings;
 let auth;
 let drive;
 let queue;
+let scheduler;
 let quitting = false;
 
 const dataDir = () => app.getPath('userData');
@@ -123,6 +125,99 @@ function tokenBox() {
   };
 }
 
+function downloadSpecsFor(items, destDir) {
+  return items.map((it) => {
+    if (it.public) {
+      return { type: 'download', public: true, fileId: it.id, resourceKey: it.resourceKey || null, name: it.name, size: it.size, destDir, source: `Link công khai/${it.name}`, dest: destDir };
+    }
+    return downloadSpec(it, destDir, { resolved: !(it.mimeType === 'application/vnd.google-apps.shortcut') });
+  });
+}
+
+// Turns a sync plan into queue specs. direction: 'both' | 'up' | 'down'.
+function planToSpecs(plan, label, { overwrite = false, direction = 'both' } = {}) {
+  const up = direction !== 'down';
+  const down = direction !== 'up';
+  const specs = [];
+  if (up) {
+    for (const u of plan.upload) {
+      const dir = path.posix.dirname(u.rel);
+      specs.push(uploadSpec(u.localPath, u.isDir, { id: u.parentId, driveId: u.driveId, label: dir === '.' ? label : `${label}/${dir}` }));
+    }
+  }
+  if (down) {
+    for (const d of plan.download) specs.push({ ...downloadSpec(d.item, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}` });
+  }
+  if (overwrite) {
+    for (const d of plan.differ) {
+      if (d.newer === 'local' && up) {
+        specs.push({ ...uploadSpec(d.local.path, false, { id: d.parentId, driveId: d.driveId, label }), conflict: 'overwrite' });
+      } else if (d.newer === 'remote' && down) {
+        specs.push({ ...downloadSpec(d.remote, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}`, conflict: 'overwrite' });
+      }
+    }
+  }
+  return specs;
+}
+
+// Executes one scheduled job; resolves to a short result message shown in the schedule list.
+async function runScheduledJob(job) {
+  const p = job.params || {};
+  if (job.type === 'download') {
+    const results = await resolveLinks(p.links);
+    const items = results.filter((r) => r.ok).map((r) => r.item);
+    if (!items.length) throw new Error(results.length ? results[0].error : 'Không có link hợp lệ.');
+    queue.add(downloadSpecsFor(items, p.destDir));
+    const bad = results.length - items.length;
+    return `Đã thêm ${items.length} mục vào hàng đợi${bad ? `, ${bad} link lỗi` : ''}.`;
+  }
+  if (job.type === 'sync') {
+    if (!drive.canUseApi) throw new Error('Chưa kết nối Google Drive.');
+    if (!fs.existsSync(p.localDir)) throw new Error(`Không tìm thấy thư mục ${p.localDir}.`);
+    const plan = await buildPlan({ drive, localDir: p.localDir, folder: p.folder });
+    const specs = planToSpecs(plan, p.label || 'Drive', { overwrite: Boolean(p.overwrite), direction: p.direction || 'both' });
+    if (specs.length) queue.add(specs);
+    return specs.length ? `Đã thêm ${specs.length} mục vào hàng đợi.` : 'Hai thư mục đã khớp, không có gì để đồng bộ.';
+  }
+  throw new Error('Loại lịch không hợp lệ.');
+}
+
+// Resolves pasted links into downloadable items (metadata only, nothing is downloaded yet).
+async function resolveLinks(text) {
+  const links = parseManyLinks(text);
+  return Promise.all(
+    links.map(async (link) => {
+      try {
+        if (drive.canUseApi) {
+          let meta;
+          try {
+            meta = await drive.get(link.id, link.resourceKey);
+          } catch (err) {
+            // Some public links are not visible to the API (e.g. missing resource key): try the public endpoint.
+            if (err.status !== 404 || link.kind === 'folder') throw err;
+            const probe = await drive.publicProbe(link.id, link.resourceKey).catch(() => null);
+            if (!probe) throw err;
+            return { input: link.input, ok: true, item: probe };
+          }
+          meta = await drive.resolveShortcut(meta);
+          if (!meta.resourceKey && link.resourceKey) meta.resourceKey = link.resourceKey;
+          return { input: link.input, ok: true, item: { ...meta, isFolder: meta.mimeType === FOLDER_MIME } };
+        }
+        if (link.kind === 'folder') {
+          throw Object.assign(new Error('Tải cả thư mục cần kết nối Google Drive (hoặc nhập API key trong Cài đặt).'), { code: 'NEED_LOGIN' });
+        }
+        if (['document', 'spreadsheet', 'presentation', 'drawing'].includes(link.kind)) {
+          throw Object.assign(new Error('Tải file Google Docs/Sheets/Slides cần kết nối Google Drive.'), { code: 'NEED_LOGIN' });
+        }
+        const probe = await drive.publicProbe(link.id, link.resourceKey);
+        return { input: link.input, ok: true, item: probe };
+      } catch (err) {
+        return { input: link.input, ok: false, error: err.message, code: err.code || null, id: link.id };
+      }
+    }),
+  );
+}
+
 function registerIpc() {
   handle('app:info', () => ({
     platform: process.platform,
@@ -190,50 +285,8 @@ function registerIpc() {
   });
 
   // Resolves pasted links into downloadable items (metadata only, nothing is downloaded yet).
-  handle('links:resolve', async (text) => {
-    const links = parseManyLinks(text);
-    return Promise.all(
-      links.map(async (link) => {
-        try {
-          if (drive.canUseApi) {
-            let meta;
-            try {
-              meta = await drive.get(link.id, link.resourceKey);
-            } catch (err) {
-              // Some public links are not visible to the API (e.g. missing resource key): try the public endpoint.
-              if (err.status !== 404 || link.kind === 'folder') throw err;
-              const probe = await drive.publicProbe(link.id, link.resourceKey).catch(() => null);
-              if (!probe) throw err;
-              return { input: link.input, ok: true, item: probe };
-            }
-            meta = await drive.resolveShortcut(meta);
-            if (!meta.resourceKey && link.resourceKey) meta.resourceKey = link.resourceKey;
-            return { input: link.input, ok: true, item: { ...meta, isFolder: meta.mimeType === FOLDER_MIME } };
-          }
-          if (link.kind === 'folder') {
-            throw Object.assign(new Error('Tải cả thư mục cần kết nối Google Drive (hoặc nhập API key trong Cài đặt).'), { code: 'NEED_LOGIN' });
-          }
-          if (['document', 'spreadsheet', 'presentation', 'drawing'].includes(link.kind)) {
-            throw Object.assign(new Error('Tải file Google Docs/Sheets/Slides cần kết nối Google Drive.'), { code: 'NEED_LOGIN' });
-          }
-          const probe = await drive.publicProbe(link.id, link.resourceKey);
-          return { input: link.input, ok: true, item: probe };
-        } catch (err) {
-          return { input: link.input, ok: false, error: err.message, code: err.code || null, id: link.id };
-        }
-      }),
-    );
-  });
-
-  handle('transfer:download', ({ items, destDir }) => {
-    const specs = items.map((it) => {
-      if (it.public) {
-        return { type: 'download', public: true, fileId: it.id, resourceKey: it.resourceKey || null, name: it.name, size: it.size, destDir, source: `Link công khai/${it.name}`, dest: destDir };
-      }
-      return downloadSpec(it, destDir, { resolved: !(it.mimeType === 'application/vnd.google-apps.shortcut') });
-    });
-    return queue.add(specs).length;
-  });
+  handle('links:resolve', (text) => resolveLinks(text));
+  handle('transfer:download', ({ items, destDir }) => queue.add(downloadSpecsFor(items, destDir)).length);
 
   handle('transfer:upload', ({ paths, parent }) => {
     const specs = paths.map((p) => uploadSpec(p, fs.statSync(p).isDirectory(), parent));
@@ -263,24 +316,17 @@ function registerIpc() {
   handle('sync:run', ({ id, overwrite }) => {
     const entry = plans.get(id);
     if (!entry) throw new Error('Kế hoạch đồng bộ đã hết hạn, hãy quét lại.');
-    const { plan, label } = entry;
     plans.delete(id);
-    const specs = [];
-    for (const u of plan.upload) {
-      specs.push(uploadSpec(u.localPath, u.isDir, { id: u.parentId, driveId: u.driveId, label: path.posix.join(label, path.posix.dirname(u.rel) === '.' ? '' : path.posix.dirname(u.rel)) }));
-    }
-    for (const d of plan.download) specs.push({ ...downloadSpec(d.item, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}` });
-    if (overwrite) {
-      for (const d of plan.differ) {
-        if (d.newer === 'local') {
-          specs.push({ ...uploadSpec(d.local.path, false, { id: d.parentId, driveId: d.driveId, label }), conflict: 'overwrite' });
-        } else {
-          specs.push({ ...downloadSpec(d.remote, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}`, conflict: 'overwrite' });
-        }
-      }
-    }
+    const specs = planToSpecs(entry.plan, entry.label, { overwrite });
     return specs.length ? queue.add(specs).length : 0;
   });
+
+  // ---- schedules
+  handle('schedule:list', () => scheduler.list());
+  handle('schedule:save', (job) => scheduler.save(job));
+  handle('schedule:remove', (id) => scheduler.remove(id));
+  handle('schedule:setEnabled', ({ id, enabled }) => scheduler.setEnabled(id, enabled));
+  handle('schedule:runNow', (id) => scheduler.runNow(id));
 
   handle('queue:snapshot', () => queue.snapshot());
   handle('queue:action', ({ action, ids }) => {
@@ -334,12 +380,17 @@ app.whenReady().then(() => {
     getConcurrency: () => settings.get('concurrency'),
     getMaxRetries: () => settings.get('maxRetries'),
     getAutoResume: () => settings.get('autoResume'),
+    gate: () => !settings.get('windowEnabled') || inWindow(Date.now(), settings.get('windowStart'), settings.get('windowEnd')),
   });
   queue.on('update', (u) => send('queue:update', u));
+  scheduler = new Scheduler({ file: path.join(dataDir(), 'schedule.json'), run: runScheduledJob, onChange: (jobs) => send('schedule:update', jobs) });
 
   registerIpc();
   createWindow();
   queue._schedule();
+  scheduler.start();
+  // Re-evaluate the time window regularly so queued work starts when it opens and pauses when it closes.
+  setInterval(() => queue._schedule(), 20_000);
 
   app.on('second-instance', () => {
     if (win) {
@@ -351,6 +402,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   quitting = true;
+  scheduler?.stop();
   queue?.shutdown();
 });
 

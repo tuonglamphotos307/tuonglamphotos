@@ -107,3 +107,28 @@ test('persists and restores unfinished tasks as paused', async () => {
   const q3 = new TransferQueue({ file, runners: { download: runner }, getAutoResume: () => true });
   assert.equal([...q3.tasks.values()][0].status, 'queued');
 });
+
+test('time window gate: nothing starts outside it, running work stops and resumes when it opens', async () => {
+  const { runner, gates } = controllable();
+  let open = false;
+  const q = new TransferQueue({ runners: { download: runner }, getConcurrency: () => 2, gate: () => open });
+  const events = [];
+  q.on('update', (u) => events.push(u.stats.gated));
+  q.add([{ type: 'download', name: 'a' }, { type: 'download', name: 'b' }]);
+  await wait(60);
+  assert.equal(gates.size, 0, 'closed window starts nothing');
+  assert.equal(q.stats().gated, true);
+
+  open = true;
+  q._schedule();
+  await until(() => gates.size === 2);
+  open = false;
+  q._schedule();
+  await until(() => [...q.tasks.values()].every((t) => t.status === 'queued') && !q.live.size);
+  await until(() => events.includes(true));
+  gates.clear();
+  open = true;
+  q._schedule();
+  await until(() => gates.size === 2);
+  q.cancel('all');
+});

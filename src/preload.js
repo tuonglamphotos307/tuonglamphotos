@@ -46,6 +46,14 @@ contextBridge.exposeInMainWorld('api', {
     download: (items, destDir) => call('transfer:download', { items, destDir }),
     upload: (paths, parent) => call('transfer:upload', { paths, parent }),
   },
+  schedule: {
+    list: () => call('schedule:list'),
+    save: (job) => call('schedule:save', job),
+    remove: (id) => call('schedule:remove', id),
+    setEnabled: (id, enabled) => call('schedule:setEnabled', { id, enabled }),
+    runNow: (id) => call('schedule:runNow', id),
+    onChange: on('schedule:update'),
+  },
   sync: {
     plan: (args) => call('sync:plan', args),
     run: (args) => call('sync:run', args),

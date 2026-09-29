@@ -32,6 +32,7 @@
       <div class="rail-group">
         <nav class="nav">
           <button class="nav-item" id="nav-queue"><span data-icon="updown"></span><span>Hàng đợi</span><span class="badge" id="queue-badge" hidden></span></button>
+          <button class="nav-item" id="nav-schedule"><span data-icon="clock"></span><span>Lịch tự động</span><span class="badge quiet" id="sched-badge" hidden></span></button>
         </nav>
       </div>
 
@@ -146,6 +147,7 @@
           </div>
           <button class="icon-btn" id="q-collapse" title="Thu gọn / mở rộng"><span data-icon="chevronDown"></span></button>
         </header>
+        <div class="q-gated" id="q-gated" hidden></div>
         <div class="q-cols">
           <span></span><span>Nguồn</span><span>Đích</span><span>Trạng thái</span><span class="right">Dung lượng</span><span>Tiến độ</span><span class="right">Tốc độ</span><span class="right">Còn lại</span><span></span>
         </div>
@@ -165,6 +167,7 @@
   <script src="icons.js"></script>
   <script src="util.js"></script>
   <script src="pane.js"></script>
+  <script src="schedule-ui.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
