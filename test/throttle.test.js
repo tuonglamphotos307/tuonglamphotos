@@ -25,9 +25,8 @@ test('paces concurrent callers to the shared rate', { timeout: 15000 }, async ()
 test('rate changes apply immediately and abort works', async () => {
   let rate = 10_000;
   const t = new Throttle(() => rate);
-  await t.take(10_000); // reserves a full second on the link
   const ctrl = new AbortController();
-  const waiting = t.take(10_000, ctrl.signal);
+  const waiting = t.take(10_000, ctrl.signal); // would wait a full second
   ctrl.abort(new Error('stop'));
   await assert.rejects(waiting, /stop/);
   rate = 0;

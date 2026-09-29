@@ -18,9 +18,10 @@ class Throttle {
       return;
     }
     const now = Date.now();
-    const start = Math.max(this.next, now);
-    this.next = start + (bytes / rate) * 1000;
-    const wait = start - now;
+    // Reserve this chunk's slot on the link and wait until the slot has passed, so even one huge chunk
+    // is held back for bytes / rate (no free initial burst).
+    this.next = Math.max(this.next, now) + (bytes / rate) * 1000;
+    const wait = this.next - now;
     if (wait <= 0) return;
     await new Promise((resolve, reject) => {
       const t = setTimeout(resolve, wait);
