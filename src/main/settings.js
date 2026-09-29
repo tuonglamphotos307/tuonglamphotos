@@ -9,6 +9,8 @@ const DEFAULTS = {
   apiKey: '',
   concurrency: 3,
   connectionsPerFile: 4,
+  downloadLimitKBps: 0, // 0 = unlimited
+  uploadLimitKBps: 0,
   uploadChunkMB: 16,
   conflict: 'rename', // rename | overwrite | skip
   exportFormat: 'office', // office | pdf | open
@@ -38,6 +40,7 @@ class Settings {
       if (k in DEFAULTS) this.data[k] = v;
     }
     this.data.connectionsPerFile = Math.min(8, Math.max(1, Math.round(Number(this.data.connectionsPerFile) || DEFAULTS.connectionsPerFile)));
+    for (const k of ['downloadLimitKBps', 'uploadLimitKBps']) this.data[k] = Math.max(0, Math.round(Number(this.data[k]) || 0));
     this.data.concurrency = Math.min(8, Math.max(1, Number(this.data.concurrency) || DEFAULTS.concurrency));
     // Resumable upload chunks must be multiples of 256 KiB; whole MB always are.
     this.data.uploadChunkMB = Math.min(256, Math.max(1, Math.round(Number(this.data.uploadChunkMB) || DEFAULTS.uploadChunkMB)));

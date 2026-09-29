@@ -10,6 +10,7 @@ const { pipeline } = require('stream/promises');
 const { DriveError, FOLDER_MIME, SHORTCUT_MIME, isGoogleNative, exportTarget, parseContentDisposition } = require('./drive');
 const { sanitizeName, exists, uniquePath } = require('./fsutil');
 const { downloadSegmented } = require('./segmented');
+const { Throttle } = require('./throttle');
 
 const PART_EXT = '.drivedock-part';
 const PROGRESS_INTERVAL_MS = 200;
@@ -64,6 +65,9 @@ async function md5File(file, signal) {
 }
 
 function createRunners({ drive, settings }) {
+  const limitDown = new Throttle(() => (settings.get('downloadLimitKBps') || 0) * 1024);
+  const limitUp = new Throttle(() => (settings.get('uploadLimitKBps') || 0) * 1024);
+
   // ---------------------------------------------------------------- downloads
 
   async function scanDriveFolder(task, ctx) {
@@ -136,7 +140,12 @@ function createRunners({ drive, settings }) {
     const report = progressThrottle(ctx);
     let bytes = start;
     const counter = new Transform({
-      transform(chunk, _enc, cb) {
+      async transform(chunk, _enc, cb) {
+        try {
+          await limitDown.take(chunk.length, ctx.signal);
+        } catch (e) {
+          return cb(e);
+        }
         bytes += chunk.length;
         if (hash) hash.update(chunk);
         report(bytes, total);
@@ -182,7 +191,7 @@ function createRunners({ drive, settings }) {
         ctx.update({ note: `${connections} kết nối song song` });
         let ok;
         try {
-          ok = await downloadSegmented(task, ctx, { drive, connections, markRetryable });
+          ok = await downloadSegmented(task, ctx, { drive, connections, markRetryable, throttle: limitDown });
         } catch (e) {
           if (e.reason === 'cannotDownloadAbusiveFile' && !task.acknowledgeAbuse) {
             ctx.update({ acknowledgeAbuse: true });
@@ -394,6 +403,7 @@ function createRunners({ drive, settings }) {
       const iterable = (async function* () {
         for await (const buf of fs.createReadStream(task.localPath, { start, end: end - 1, highWaterMark: 256 * 1024 })) {
           if (signal.aborted) return;
+          await limitUp.take(buf.length, signal);
           sent += buf.length;
           report(sent, size);
           yield buf;

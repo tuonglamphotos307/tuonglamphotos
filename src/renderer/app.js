@@ -723,6 +723,10 @@ function openSettings() {
             <option value="open" ${sel('open', s.exportFormat)}>OpenDocument (.odt .ods .odp)</option>
           </select></label>
       </div>
+      <div class="grid2">
+        <label class="field"><span>Giới hạn tốc độ tải xuống (KB/s)</span><input class="input" id="st-dl" type="number" min="0" step="100" placeholder="0 = không giới hạn" /></label>
+        <label class="field"><span>Giới hạn tốc độ tải lên (KB/s)</span><input class="input" id="st-ul" type="number" min="0" step="100" placeholder="0 = không giới hạn" /></label>
+      </div>
       <label class="field"><span>Thư mục tải mặc định cho “Tải từ link”</span>
         <div class="inline"><input class="input" id="st-dir" spellcheck="false" placeholder="${esc(S.info.paths.downloads)}" /><button class="btn" id="st-pick">Chọn…</button></div></label>
       <label class="check"><input type="checkbox" id="st-md5" ${s.verifyMd5 ? 'checked' : ''} /> Kiểm tra MD5 sau khi tải xuống (phát hiện file hỏng)</label>
@@ -735,6 +739,8 @@ function openSettings() {
   $('#st-csec', modal).value = s.clientSecret || '';
   $('#st-key', modal).value = s.apiKey || '';
   $('#st-dir', modal).value = s.defaultDownloadDir || '';
+  $('#st-dl', modal).value = s.downloadLimitKBps || '';
+  $('#st-ul', modal).value = s.uploadLimitKBps || '';
   for (const a of $$('a[data-url]', modal)) a.onclick = () => api.openExternal(a.dataset.url);
 
   $('#st-import', modal).onclick = async () => {
@@ -762,6 +768,8 @@ function openSettings() {
         concurrency: Number($('#st-conc', modal).value),
         uploadChunkMB: Number($('#st-chunk', modal).value),
         connectionsPerFile: Number($('#st-conn', modal).value),
+        downloadLimitKBps: Number($('#st-dl', modal).value) || 0,
+        uploadLimitKBps: Number($('#st-ul', modal).value) || 0,
         conflict: $('#st-conflict', modal).value,
         exportFormat: $('#st-export', modal).value,
         defaultDownloadDir: $('#st-dir', modal).value.trim(),

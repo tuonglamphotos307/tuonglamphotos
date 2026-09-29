@@ -183,3 +183,15 @@ test('resumes an upload from the offset the session reports', async () => {
   assert.equal(drive.calls.chunks[0][0], 1024 * 1024);
   assert.ok(drive.received.equals(data.subarray(1024 * 1024)));
 });
+
+test('download honours the speed limit', { timeout: 20000 }, async () => {
+  const dir = tmp();
+  const { runners } = createRunners({ drive: fakeDrive(), settings: settings({ downloadLimitKBps: 200 }) });
+  const task = downloadSpec(META, dir);
+  const start = Date.now();
+  await runners.download(task, ctxFor(task));
+  const took = Date.now() - start;
+  // 300 kB at 200 kB/s is about 1.5 s; unlimited finishes in a few ms.
+  assert.ok(took >= 1100, `took only ${took} ms`);
+  assert.ok(fs.readFileSync(task.finalPath).equals(CONTENT));
+});

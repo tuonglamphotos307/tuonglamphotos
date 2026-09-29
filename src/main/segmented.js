@@ -30,7 +30,7 @@ const remaining = (segs) => segs.reduce((sum, s) => sum + Math.max(0, s.end - s.
 
 // Resolves true when the whole file is in task.partPath, false if the server ignores Range requests
 // (the caller then falls back to a single stream). Throws on errors, leaving task.segments resumable.
-async function downloadSegmented(task, ctx, { drive, connections, markRetryable }) {
+async function downloadSegmented(task, ctx, { drive, connections, markRetryable, throttle }) {
   const size = task.size;
   let segs = task.segments;
   const st = await fs.promises.stat(task.partPath).catch(() => null);
@@ -115,6 +115,7 @@ async function downloadSegmented(task, ctx, { drive, connections, markRetryable 
         const room = seg.end - seg.pos;
         if (buf.length > room) buf = buf.subarray(0, room);
         if (buf.length) {
+          if (throttle) await throttle.take(buf.length, conn.signal);
           await fh.write(buf, 0, buf.length, seg.pos);
           seg.pos += buf.length;
           tick(false);
