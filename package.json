@@ -1,0 +1,46 @@
+{
+  "name": "drivedock",
+  "productName": "DriveDock",
+  "version": "0.1.0",
+  "description": "Trình quản lý tải lên / tải xuống Google Drive hai khung, hỗ trợ tải bằng link, hàng đợi và tiếp tục khi bị ngắt.",
+  "main": "src/main/main.js",
+  "author": "tuonglamphotos",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win",
+    "dist:mac": "electron-builder --mac",
+    "dist:linux": "electron-builder --linux"
+  },
+  "build": {
+    "appId": "com.tuonglamphotos.drivedock",
+    "productName": "DriveDock",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  }
+}

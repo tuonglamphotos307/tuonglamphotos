@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self'" />
+  <title>DriveDock</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" data-icon="cloud"></span>
+        <span class="brand-name">DriveDock</span>
+      </div>
+
+      <button class="btn primary block" id="btn-link" title="Ctrl+L — hoặc dán link ở bất kỳ đâu">
+        <span data-icon="link"></span> Tải từ link
+      </button>
+
+      <div class="nav-title">Google Drive</div>
+      <nav class="nav" id="nav-drive">
+        <button class="nav-item" data-place="root"><span data-icon="hdd"></span>Drive của tôi</button>
+        <button class="nav-item" data-place="shared"><span data-icon="users"></span>Được chia sẻ</button>
+        <button class="nav-item" data-place="drives"><span data-icon="building"></span>Bộ nhớ dùng chung</button>
+      </nav>
+
+      <div class="nav-title">Máy tính</div>
+      <nav class="nav" id="nav-local"></nav>
+
+      <nav class="nav">
+        <button class="nav-item" id="nav-queue"><span data-icon="updown"></span>Hàng đợi<span class="badge" id="queue-badge" hidden></span></button>
+      </nav>
+
+      <div class="spacer"></div>
+
+      <div class="account" id="account"></div>
+      <button class="nav-item" id="btn-settings"><span data-icon="sliders"></span>Cài đặt</button>
+    </aside>
+
+    <main class="main" id="main">
+      <div class="panes" id="panes">
+        <section class="pane" id="pane-local" tabindex="0">
+          <header class="pane-head">
+            <span class="pane-icon" data-icon="laptop"></span>
+            <h2>Máy của anh</h2>
+            <div class="spacer"></div>
+            <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
+            <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
+            <button class="tool accent" data-act="transfer" title="Tải các mục đã chọn lên Google Drive"><span data-icon="upload"></span><span class="lbl">Tải lên</span></button>
+            <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+          </header>
+          <div class="crumbs"><button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button><div class="crumb-list"></div></div>
+          <label class="search"><span data-icon="search"></span><input type="text" placeholder="Tìm trong thư mục này" spellcheck="false" /></label>
+          <div class="cols">
+            <span></span>
+            <button data-sort="name">Tên</button>
+            <span></span>
+            <button data-sort="mtime">Ngày sửa</button>
+            <button data-sort="size" class="right">Dung lượng</button>
+          </div>
+          <div class="list" tabindex="-1"></div>
+          <div class="pane-empty" hidden></div>
+          <footer class="pane-foot"><span class="foot-left"></span><span class="foot-right"></span></footer>
+        </section>
+
+        <div class="vsplit" id="vsplit"></div>
+
+        <section class="pane" id="pane-drive" tabindex="0">
+          <header class="pane-head">
+            <span class="pane-icon" data-icon="cloud"></span>
+            <h2>Google Drive</h2>
+            <div class="spacer"></div>
+            <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
+            <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
+            <button class="tool accent" data-act="transfer" title="Tải các mục đã chọn về máy"><span data-icon="download"></span><span class="lbl">Tải xuống</span></button>
+            <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+          </header>
+          <div class="crumbs"><button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button><div class="crumb-list"></div></div>
+          <label class="search"><span data-icon="search"></span><input type="text" placeholder="Tìm trong thư mục này" spellcheck="false" /></label>
+          <div class="cols">
+            <span></span>
+            <button data-sort="name">Tên</button>
+            <span></span>
+            <button data-sort="mtime">Ngày sửa</button>
+            <button data-sort="size" class="right">Dung lượng</button>
+          </div>
+          <div class="list" tabindex="-1"></div>
+          <div class="pane-empty" hidden></div>
+          <footer class="pane-foot"><span class="foot-left"></span><span class="foot-right"></span></footer>
+        </section>
+      </div>
+
+      <div class="hsplit" id="hsplit"><span></span></div>
+
+      <section class="queue" id="queue">
+        <header class="queue-head">
+          <span class="q-title"><span data-icon="updown"></span>Hàng đợi</span>
+          <span class="q-summary" id="q-summary"></span>
+          <div class="q-filters" id="q-filters">
+            <button data-f="all" class="on">Tất cả</button>
+            <button data-f="active">Đang chạy</button>
+            <button data-f="error">Lỗi</button>
+            <button data-f="done">Xong</button>
+          </div>
+          <div class="spacer"></div>
+          <label class="check"><input type="checkbox" id="auto-resume" /> Tự tiếp tục khi mở app</label>
+          <button class="link-btn" data-q="resume">Tiếp tục tất cả</button>
+          <button class="link-btn" data-q="pause">Tạm dừng tất cả</button>
+          <button class="link-btn" data-q="cancel">Huỷ tất cả</button>
+          <button class="link-btn" data-q="clearFinished">Xoá đã xong</button>
+          <button class="tool" id="q-collapse" title="Thu gọn / mở rộng"><span data-icon="chevronDown"></span></button>
+        </header>
+        <div class="q-cols">
+          <span>Thao tác</span><span>Nguồn</span><span>Đích</span><span>Trạng thái</span><span class="right">Dung lượng</span><span>Tiến độ</span><span class="right">Tốc độ</span><span class="right">Còn lại</span>
+        </div>
+        <div class="q-body" id="q-body"></div>
+        <div class="q-empty" id="q-empty">Không có tiến trình nào trong hàng đợi. Chọn file rồi bấm Tải lên / Tải xuống, kéo thả giữa hai khung, hoặc bấm <b>Tải từ link</b>.</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="toasts" id="toasts"></div>
+  <div class="menu" id="menu" hidden></div>
+  <div class="modal-root" id="modal-root"></div>
+
+  <script src="icons.js"></script>
+  <script src="util.js"></script>
+  <script src="pane.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
