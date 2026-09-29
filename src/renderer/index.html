@@ -4,53 +4,77 @@
   <meta charset="utf-8" />
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://*.googleusercontent.com; style-src 'self' 'unsafe-inline'; script-src 'self'" />
   <title>DriveDock</title>
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
   <div class="app">
-    <aside class="sidebar">
+    <aside class="rail">
       <div class="brand">
-        <span class="brand-mark" data-icon="cloud"></span>
-        <span class="brand-name">DriveDock</span>
+        <span class="brand-mark"><i></i><i></i></span>
+        <div class="brand-text"><b>DriveDock</b><small>Trạm tải Google Drive</small></div>
       </div>
 
-      <button class="btn primary block" id="btn-link" title="Ctrl+L — hoặc dán link ở bất kỳ đâu">
-        <span data-icon="link"></span> Tải từ link
-      </button>
+      <div class="rail-group">
+        <div class="rail-title">Google Drive</div>
+        <nav class="nav" id="nav-drive">
+          <button class="nav-item" data-place="root"><span data-icon="hdd"></span><span>Drive của tôi</span></button>
+          <button class="nav-item" data-place="shared"><span data-icon="users"></span><span>Được chia sẻ</span></button>
+          <button class="nav-item" data-place="drives"><span data-icon="building"></span><span>Bộ nhớ dùng chung</span></button>
+        </nav>
+      </div>
 
-      <div class="nav-title">Google Drive</div>
-      <nav class="nav" id="nav-drive">
-        <button class="nav-item" data-place="root"><span data-icon="hdd"></span>Drive của tôi</button>
-        <button class="nav-item" data-place="shared"><span data-icon="users"></span>Được chia sẻ</button>
-        <button class="nav-item" data-place="drives"><span data-icon="building"></span>Bộ nhớ dùng chung</button>
-      </nav>
+      <div class="rail-group">
+        <div class="rail-title">Máy tính</div>
+        <nav class="nav" id="nav-local"></nav>
+      </div>
 
-      <div class="nav-title">Máy tính</div>
-      <nav class="nav" id="nav-local"></nav>
-
-      <nav class="nav">
-        <button class="nav-item" id="nav-queue"><span data-icon="updown"></span>Hàng đợi<span class="badge" id="queue-badge" hidden></span></button>
-      </nav>
+      <div class="rail-group">
+        <nav class="nav">
+          <button class="nav-item" id="nav-queue"><span data-icon="updown"></span><span>Hàng đợi</span><span class="badge" id="queue-badge" hidden></span></button>
+        </nav>
+      </div>
 
       <div class="spacer"></div>
 
+      <div class="storage" id="storage" hidden></div>
       <div class="account" id="account"></div>
-      <button class="nav-item" id="btn-settings"><span data-icon="sliders"></span>Cài đặt</button>
+      <div class="rail-foot">
+        <button class="nav-item" id="btn-settings"><span data-icon="sliders"></span><span>Cài đặt</span></button>
+        <button class="icon-btn" id="btn-theme" title="Đổi giao diện sáng / tối"><span data-icon="moon"></span></button>
+      </div>
     </aside>
 
     <main class="main" id="main">
+      <header class="topbar">
+        <form class="linkbar" id="linkbar" autocomplete="off">
+          <span class="linkbar-icon" data-icon="link"></span>
+          <input id="linkbar-input" type="text" spellcheck="false" placeholder="Dán link Google Drive — file, thư mục, Docs… rồi nhấn Enter" />
+          <kbd class="linkbar-kbd">Ctrl L</kbd>
+          <button class="btn primary" type="submit"><span data-icon="download"></span>Tải về</button>
+        </form>
+        <div class="live" id="live" hidden>
+          <span class="live-dot"></span>
+          <span class="live-speed" id="live-speed"></span>
+        </div>
+      </header>
+
       <div class="panes" id="panes">
         <section class="pane" id="pane-local" tabindex="0">
           <header class="pane-head">
             <span class="pane-icon" data-icon="laptop"></span>
-            <h2>Máy của anh</h2>
+            <div class="pane-title"><span class="eyebrow">Ổ đĩa cục bộ</span><h2>Máy của anh</h2></div>
             <div class="spacer"></div>
-            <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
-            <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
-            <button class="tool accent" data-act="transfer" title="Tải các mục đã chọn lên Google Drive"><span data-icon="upload"></span><span class="lbl">Tải lên</span></button>
-            <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+            <div class="toolgroup">
+              <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
+              <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
+              <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+            </div>
           </header>
-          <div class="crumbs"><button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button><div class="crumb-list"></div></div>
+          <div class="pane-nav">
+            <button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button>
+            <div class="crumb-list"></div>
+          </div>
           <label class="search"><span data-icon="search"></span><input type="text" placeholder="Tìm trong thư mục này" spellcheck="false" /></label>
           <div class="cols">
             <span></span>
@@ -64,19 +88,27 @@
           <footer class="pane-foot"><span class="foot-left"></span><span class="foot-right"></span></footer>
         </section>
 
-        <div class="vsplit" id="vsplit"></div>
+        <div class="spine" id="spine" title="Kéo để đổi độ rộng hai khung">
+          <button class="spine-btn up" id="spine-up" title="Tải mục đã chọn lên Google Drive"><span data-icon="arrowRight" data-size="18"></span></button>
+          <span class="spine-label">Chuyển</span>
+          <button class="spine-btn down" id="spine-down" title="Tải mục đã chọn về máy"><span data-icon="arrowLeft" data-size="18"></span></button>
+        </div>
 
         <section class="pane" id="pane-drive" tabindex="0">
           <header class="pane-head">
-            <span class="pane-icon" data-icon="cloud"></span>
-            <h2>Google Drive</h2>
+            <span class="pane-icon drive" data-icon="cloud"></span>
+            <div class="pane-title"><span class="eyebrow">Đám mây</span><h2>Google Drive</h2></div>
             <div class="spacer"></div>
-            <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
-            <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
-            <button class="tool accent" data-act="transfer" title="Tải các mục đã chọn về máy"><span data-icon="download"></span><span class="lbl">Tải xuống</span></button>
-            <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+            <div class="toolgroup">
+              <button class="tool sort-btn" data-act="sort" title="Đổi cách sắp xếp"><span data-icon="sort"></span><span class="lbl">Tên</span></button>
+              <button class="tool" data-act="mkdir" title="Thư mục mới"><span data-icon="folderPlus"></span></button>
+              <button class="tool" data-act="refresh" title="Làm mới (F5)"><span data-icon="refresh"></span></button>
+            </div>
           </header>
-          <div class="crumbs"><button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button><div class="crumb-list"></div></div>
+          <div class="pane-nav">
+            <button class="crumb-back" data-act="back" title="Quay lại"><span data-icon="chevronLeft"></span></button>
+            <div class="crumb-list"></div>
+          </div>
           <label class="search"><span data-icon="search"></span><input type="text" placeholder="Tìm trong thư mục này" spellcheck="false" /></label>
           <div class="cols">
             <span></span>
@@ -95,7 +127,7 @@
 
       <section class="queue" id="queue">
         <header class="queue-head">
-          <span class="q-title"><span data-icon="updown"></span>Hàng đợi</span>
+          <h3 class="q-title">Hàng đợi</h3>
           <span class="q-summary" id="q-summary"></span>
           <div class="q-filters" id="q-filters">
             <button data-f="all" class="on">Tất cả</button>
@@ -104,18 +136,23 @@
             <button data-f="done">Xong</button>
           </div>
           <div class="spacer"></div>
-          <label class="check"><input type="checkbox" id="auto-resume" /> Tự tiếp tục khi mở app</label>
-          <button class="link-btn" data-q="resume">Tiếp tục tất cả</button>
-          <button class="link-btn" data-q="pause">Tạm dừng tất cả</button>
-          <button class="link-btn" data-q="cancel">Huỷ tất cả</button>
-          <button class="link-btn" data-q="clearFinished">Xoá đã xong</button>
-          <button class="tool" id="q-collapse" title="Thu gọn / mở rộng"><span data-icon="chevronDown"></span></button>
+          <label class="switch"><input type="checkbox" id="auto-resume" /><span class="track"></span>Tự tiếp tục khi mở app</label>
+          <div class="q-actions">
+            <button class="chip-btn" data-q="resume" title="Tiếp tục tất cả"><span data-icon="play" data-size="13"></span>Tiếp tục</button>
+            <button class="chip-btn" data-q="pause" title="Tạm dừng tất cả"><span data-icon="pause" data-size="13"></span>Tạm dừng</button>
+            <button class="chip-btn" data-q="cancel" title="Huỷ tất cả"><span data-icon="x" data-size="13"></span>Huỷ</button>
+            <button class="chip-btn" data-q="clearFinished" title="Xoá các mục đã xong khỏi danh sách"><span data-icon="check" data-size="13"></span>Dọn mục xong</button>
+          </div>
+          <button class="icon-btn" id="q-collapse" title="Thu gọn / mở rộng"><span data-icon="chevronDown"></span></button>
         </header>
         <div class="q-cols">
-          <span>Thao tác</span><span>Nguồn</span><span>Đích</span><span>Trạng thái</span><span class="right">Dung lượng</span><span>Tiến độ</span><span class="right">Tốc độ</span><span class="right">Còn lại</span>
+          <span></span><span>Nguồn</span><span>Đích</span><span>Trạng thái</span><span class="right">Dung lượng</span><span>Tiến độ</span><span class="right">Tốc độ</span><span class="right">Còn lại</span><span></span>
         </div>
         <div class="q-body" id="q-body"></div>
-        <div class="q-empty" id="q-empty">Không có tiến trình nào trong hàng đợi. Chọn file rồi bấm Tải lên / Tải xuống, kéo thả giữa hai khung, hoặc bấm <b>Tải từ link</b>.</div>
+        <div class="q-empty" id="q-empty">
+          <div class="q-empty-art"><span data-icon="updown" data-size="22"></span></div>
+          <div><b>Chưa có gì trong hàng đợi</b><span>Dán một link ở thanh trên cùng, kéo thả giữa hai khung, hoặc chọn file rồi bấm nút mũi tên ở giữa.</span></div>
+        </div>
       </section>
     </main>
   </div>

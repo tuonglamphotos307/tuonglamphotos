@@ -47,6 +47,10 @@ const ICONS = {
   alert: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
   logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/>',
   home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/>',
+  moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  arrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  arrowLeft: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
   monitor: '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/>',
 };
 
@@ -66,20 +70,20 @@ function hydrateIcons(root = document) {
 
 // File-type icon and color for a file name or mime type.
 const TYPE_STYLES = {
-  folder: ['folder', 'var(--folder)'],
-  sharedDrive: ['building', 'var(--folder)'],
-  disk: ['hdd', '#9fb0aa'],
-  image: ['image', '#f5a524'],
-  video: ['video', '#ef6aa6'],
-  audio: ['music', '#b48cff'],
-  pdf: ['fileText', '#ff6b6b'],
-  doc: ['fileText', '#4c8bf5'],
-  sheet: ['sheet', '#34c26b'],
-  slides: ['slides', '#f5b400'],
-  archive: ['archive', '#c9a26b'],
-  code: ['code', '#7fd1c7'],
-  text: ['fileText', '#9fb0aa'],
-  file: ['file', '#8a9994'],
+  folder: ['folder', 'var(--accent)'],
+  sharedDrive: ['building', 'var(--accent)'],
+  disk: ['hdd', 'var(--ink-2)'],
+  image: ['image', '#e0852a'],
+  video: ['video', '#d4447a'],
+  audio: ['music', '#8a58e6'],
+  pdf: ['fileText', '#d4372a'],
+  doc: ['fileText', '#2f6cf0'],
+  sheet: ['sheet', '#1a9464'],
+  slides: ['slides', '#d69b00'],
+  archive: ['archive', '#9a7a4c'],
+  code: ['code', '#1592a3'],
+  text: ['fileText', '#7a7468'],
+  file: ['file', '#8b8579'],
 };
 
 const EXT_TYPES = {
@@ -114,4 +118,10 @@ function fileType({ name = '', mimeType = '', isDir = false }) {
 function typeIcon(type, size = 18) {
   const [name, color] = TYPE_STYLES[type] || TYPE_STYLES.file;
   return icon(name, size, `style="color:${color}"`);
+}
+
+// Rounded, tinted tile around a file-type icon (color-coded like the storage breakdown).
+function typeTile(type, size = 17) {
+  const [name, color] = TYPE_STYLES[type] || TYPE_STYLES.file;
+  return `<span class="ic" style="--tc:${color}">${icon(name, size)}</span>`;
 }

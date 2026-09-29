@@ -33,6 +33,7 @@ class Pane {
     this.onContext = null; // (event, items) => void
     this.onFocus = null;
     this.onNavigate = null;
+    this.onSelect = null; // () => void, after selection or listing changes
 
     this._bind();
   }
@@ -138,8 +139,6 @@ class Pane {
     }
     $('.sort-btn .lbl', this.el).textContent = SORT_LABELS[this.sort.key];
 
-    const canTransfer = this.a.canTransfer ? this.a.canTransfer() : true;
-    $('[data-act="transfer"]', this.el).disabled = !canTransfer;
     const canMkdir = this.a.canMkdir ? this.a.canMkdir() : true;
     $('[data-act="mkdir"]', this.el).disabled = !canMkdir;
   }
@@ -177,11 +176,11 @@ class Pane {
 
     const a = this.a;
     const html = this.view
-      .map((it) => {
+      .map((it, i) => {
         const k = a.key(it);
         const dir = a.isDir(it);
-        return `<div class="row${this.sel.has(k) ? ' sel' : ''}${a.dim && a.dim(it) ? ' dim' : ''}" data-k="${esc(k)}" draggable="true">
-          <span class="ic">${typeIcon(a.type(it), 18)}</span>
+        return `<div class="row${this.sel.has(k) ? ' sel' : ''}${a.dim && a.dim(it) ? ' dim' : ''}" data-k="${esc(k)}" draggable="true" style="--i:${Math.min(i, 24)}">
+          ${typeTile(a.type(it))}
           <span class="nm" title="${esc(a.label(it))}">${esc(a.label(it))}</span>
           <span class="chev">${dir ? icon('chevronRight', 14) : ''}</span>
           <span class="dt">${fmtDate(a.mtime(it))}</span>
@@ -197,7 +196,18 @@ class Pane {
     this.renderFooter();
   }
 
+  // Sends the current selection to the other side (spine buttons, context menu).
+  transferSelection() {
+    const items = this.selectedItems();
+    if (!items.length) {
+      toast('Chọn ít nhất một file hoặc thư mục trước đã.');
+      return;
+    }
+    this.onTransfer && this.onTransfer(items);
+  }
+
   renderFooter() {
+    this.onSelect && this.onSelect();
     const sel = this.selectedItems();
     const selSize = sel.reduce((s, i) => s + (this.a.isDir(i) ? 0 : this.a.size(i) || 0), 0);
     const left = sel.length
@@ -355,14 +365,6 @@ class Pane {
     $('[data-act="refresh"]', el).onclick = () => this.reload();
     $('[data-act="back"]', el).onclick = () => this.a.back();
     $('[data-act="mkdir"]', el).onclick = () => this.a.mkdir && this.a.mkdir();
-    $('[data-act="transfer"]', el).onclick = () => {
-      const items = this.selectedItems();
-      if (!items.length) {
-        toast('Chọn ít nhất một file hoặc thư mục trước đã.');
-        return;
-      }
-      this.onTransfer && this.onTransfer(items);
-    };
     el.addEventListener('mouseup', (e) => {
       if (e.button === 3) this.a.back(); // mouse "back" button
     });

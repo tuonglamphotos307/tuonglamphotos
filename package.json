@@ -20,6 +20,7 @@
     "productName": "DriveDock",
     "files": [
       "src/**/*",
+      "build/icon.png",
       "package.json"
     ],
     "win": {
@@ -42,5 +43,10 @@
   "devDependencies": {
     "electron": "^44.4.5",
     "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/be-vietnam-pro": "^5.3.0"
   }
 }

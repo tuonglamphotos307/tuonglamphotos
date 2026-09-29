@@ -2,9 +2,17 @@
 
 Phần mềm desktop để **tải xuống / tải lên Google Drive**, ý tưởng giống Air Explorer nhưng tập trung vào việc chuyển file nhanh và không phải trông chừng.
 
-**Cách dùng nhanh nhất:** bấm **Tải từ link** (hoặc `Ctrl+L`, hoặc dán link ở bất kỳ đâu trong app), dán một hay nhiều link Google Drive, chọn thư mục lưu rồi bấm **Tải xuống**.
+**Cách dùng nhanh nhất:** dán link Google Drive vào thanh trên cùng (hoặc `Ctrl+L`, hoặc dán ở bất kỳ đâu trong app), xem trước tên và dung lượng, chọn thư mục lưu rồi bấm **Tải xuống**.
 
-![Giao diện DriveDock](build/screenshot.png)
+![DriveDock — giao diện sáng](build/screenshot.png)
+
+<details><summary>Giao diện tối</summary>
+
+![DriveDock — giao diện tối](build/screenshot-dark.png)
+
+</details>
+
+**Thiết kế "Paper & Cobalt":** nền giấy ấm, chữ màu mực; **xanh cobalt** nghĩa là *tải về máy*, **cam đỏ** nghĩa là *tải lên Drive*, dùng nhất quán ở nút chuyển giữa hai khung, hàng đợi và thanh tiến độ. Chữ tiêu đề dùng *Bricolage Grotesque*, chữ nội dung dùng *Be Vietnam Pro* (thiết kế riêng cho tiếng Việt), số liệu dùng *JetBrains Mono*. Font được đóng gói sẵn trong app, không cần mạng. Có giao diện tối, bấm nút mặt trăng ở góc dưới thanh bên.
 
 ## Tính năng
 
@@ -58,7 +66,7 @@ Muốn tải thư mục công khai mà không đăng nhập thì tạo thêm m�
 
 | Phím | Tác dụng |
 | --- | --- |
-| `Ctrl+L` / dán link | Mở hộp thoại Tải từ link |
+| `Ctrl+L` / dán link | Đưa con trỏ vào thanh dán link |
 | `Enter` / nhấp đúp | Mở thư mục / file |
 | `Backspace` | Lên thư mục cha |
 | `F5` | Làm mới |

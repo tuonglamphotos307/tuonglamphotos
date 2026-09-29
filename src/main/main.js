@@ -17,7 +17,14 @@ if (!app.requestSingleInstanceLock()) {
   process.exit(0);
 }
 
-nativeTheme.themeSource = 'dark';
+nativeTheme.themeSource = 'system';
+
+// Window chrome colors per theme; the page draws everything else.
+const CHROME = {
+  light: { color: '#efebe3', symbolColor: '#18171b' },
+  dark: { color: '#111115', symbolColor: '#f2efe8' },
+};
+const TITLEBAR_H = 40;
 
 let win = null;
 let settings;
@@ -37,13 +44,20 @@ function createWindow() {
     // first launch
   }
 
+  const chrome = CHROME[nativeTheme.shouldUseDarkColors ? 'dark' : 'light'];
   win = new BrowserWindow({
     ...bounds,
-    minWidth: 960,
-    minHeight: 600,
-    backgroundColor: '#0c1110',
+    minWidth: 1024,
+    minHeight: 640,
+    backgroundColor: chrome.color,
     autoHideMenuBar: true,
     title: 'DriveDock',
+    icon: path.join(__dirname, '..', '..', 'build', 'icon.png'),
+    // Frameless look: the OS keeps drawing min/max/close as an overlay in the top-right corner.
+    titleBarStyle: 'hidden',
+    ...(process.platform === 'darwin'
+      ? { trafficLightPosition: { x: 16, y: 14 } }
+      : { titleBarOverlay: { ...chrome, height: TITLEBAR_H } }),
     webPreferences: {
       preload: path.join(__dirname, '..', 'preload.js'),
       contextIsolation: true,
@@ -119,6 +133,14 @@ function registerIpc() {
       pictures: app.getPath('pictures'),
     },
   }));
+
+  handle('window:theme', (theme) => {
+    const c = CHROME[theme === 'dark' ? 'dark' : 'light'];
+    nativeTheme.themeSource = theme === 'dark' ? 'dark' : 'light';
+    if (!win) return;
+    win.setBackgroundColor(c.color);
+    if (process.platform !== 'darwin') win.setTitleBarOverlay({ ...c, height: TITLEBAR_H });
+  });
 
   handle('settings:get', () => settings.get());
   handle('settings:set', (patch) => {

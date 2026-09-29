@@ -173,11 +173,11 @@ const driveAdapter = {
   overlay() {
     if (S.auth.loggedIn) return null;
     return `<div class="empty-card">
-      <h3>Kết nối không gian của anh</h3>
-      <p>Đăng nhập Google Drive để duyệt file và tải lên chỉ bằng một lần kéo thả.</p>
-      <button class="btn primary" id="btn-connect"><span data-icon="plus"></span>Kết nối Google Drive</button>
-      <small>Đăng nhập an toàn qua Google</small>
-      <small style="margin-top:10px">Chỉ cần tải file công khai? Bấm <b>Tải từ link</b>, không cần đăng nhập.</small>
+      <div class="empty-art"><i></i><i></i><i></i></div>
+      <h3>Đưa Drive của anh vào đây</h3>
+      <p>Đăng nhập một lần để duyệt thư mục, kéo thả để tải lên, và tải cả thư mục về máy.</p>
+      <button class="btn accent" id="btn-connect"><span data-icon="cloud"></span>Kết nối Google Drive</button>
+      <small>Mở trình duyệt để đăng nhập an toàn với Google.<br />File công khai thì chỉ cần dán link ở thanh trên cùng.</small>
     </div>`;
   },
   bindOverlay(el) {
@@ -369,16 +369,17 @@ function qRow(t) {
   if (!row) {
     row = document.createElement('div');
     row.className = 'q-row';
-    row.innerHTML = `<div class="acts"></div>
-      <div class="src"><span class="dir"></span><span class="t"></span></div>
-      <div class="dst"><span class="t"></span></div>
+    row.innerHTML = `<span class="dir"></span>
+      <div class="src"></div>
+      <div class="dst"></div>
       <div class="st"><span class="pill"></span><small></small></div>
       <div class="num size"></div>
       <div class="bar"><div class="track"><div class="fill"></div></div><span class="pct"></span></div>
       <div class="num speed"></div>
-      <div class="num eta"></div>`;
+      <div class="num eta"></div>
+      <div class="acts"></div>`;
     row._ = {
-      acts: $('.acts', row), dir: $('.dir', row), src: $('.src .t', row), dst: $('.dst .t', row),
+      acts: $('.acts', row), dir: $('.dir', row), src: $('.src', row), dst: $('.dst', row),
       pill: $('.pill', row), note: $('.st small', row), size: $('.size', row),
       fill: $('.fill', row), pct: $('.pct', row), speed: $('.speed', row), eta: $('.eta', row),
     };
@@ -393,7 +394,8 @@ function qRow(t) {
   if (row.dataset.type !== t.type) {
     row.dataset.type = t.type;
     r.dir.className = `dir ${t.type === 'upload' ? 'up' : 'down'}`;
-    r.dir.innerHTML = icon(t.type === 'upload' ? 'arrowUp' : 'arrowDown', 12);
+    r.dir.innerHTML = icon(t.type === 'upload' ? 'arrowUp' : 'arrowDown', 14);
+    r.dir.title = t.type === 'upload' ? 'Tải lên Drive' : 'Tải về máy';
   }
   const src = t.source || t.name || '';
   r.src.textContent = t.isFolder ? `${src}/` : src;
@@ -405,15 +407,15 @@ function qRow(t) {
   const note = t.error || t.note || '';
   r.note.textContent = note;
   r.note.title = note;
-  row.title = t.error || '';
+  r.note.hidden = !note;
 
   r.size.textContent = t.isFolder ? '–' : fmtSize(t.size);
   let pct = null;
   if (t.status === 'done' || t.status === 'skipped') pct = 100;
   else if (t.size > 0) pct = Math.min(100, (t.transferred / t.size) * 100);
-  else if (t.size === 0 && t.status === 'done') pct = 100;
   const indet = t.status === 'running' && (t.isFolder || pct == null);
   r.fill.classList.toggle('indet', indet);
+  r.fill.classList.toggle('done', t.status === 'done');
   r.fill.classList.toggle('error', t.status === 'error');
   r.fill.classList.toggle('paused', t.status === 'paused');
   r.fill.style.width = `${pct ?? 0}%`;
@@ -453,6 +455,8 @@ function qRenderStats(stats) {
   badge.hidden = !n;
   badge.textContent = n;
   document.title = s.running && s.speed ? `DriveDock — ${fmtSpeed(s.speed)}` : 'DriveDock';
+  $('#live').hidden = !s.running;
+  $('#live-speed').textContent = s.speed ? `${fmtSpeed(s.speed)} · ${s.running} file` : `${s.running} file đang chạy`;
 }
 
 const refreshLocalSoon = debounce(() => paneLocal.reload(), 800);
@@ -554,7 +558,7 @@ function openLinkModal(prefill = '') {
 
   const { modal, close } = openModal(`
     <div class="modal-head">
-      <span class="pane-icon" data-icon="link"></span>
+      <span class="pane-icon drive" data-icon="link"></span>
       <div><h3>Tải từ link Google Drive</h3><p>Dán một hoặc nhiều link file / thư mục (mỗi link một dòng). Hỗ trợ link chia sẻ, Docs/Sheets/Slides và ID.</p></div>
     </div>
     <div class="modal-body">
@@ -600,7 +604,7 @@ function openLinkModal(prefill = '') {
           it.isFolder ? 'Thư mục — tải toàn bộ bên trong' : it.size != null ? fmtSize(Number(it.size)) : it.mimeType?.startsWith('application/vnd.google-apps') ? 'Google Docs — sẽ xuất sang Office' : '',
           it.public ? 'công khai, không cần đăng nhập' : '',
         ].filter(Boolean).join(' · ');
-        return `<div class="res-item">${typeIcon(type, 20)}<div style="min-width:0"><div class="nm" title="${esc(it.name)}">${esc(it.name)}</div><div class="meta">${esc(meta)}</div></div><span class="tag">${icon('check', 16, 'style="color:var(--accent)"')}</span></div>`;
+        return `<div class="res-item">${typeTile(type, 18)}<div style="min-width:0"><div class="nm" title="${esc(it.name)}">${esc(it.name)}</div><div class="meta">${esc(meta)}</div></div><span class="tag">${icon('check', 16)}</span></div>`;
       })
       .join('');
     for (const b of $$('[data-login]', res)) b.onclick = () => connect(b).then(() => resolveNow());
@@ -809,12 +813,37 @@ function afterAuthChange() {
     api.drive.about().then((a) => {
       S.quota = a.storageQuota;
       paneDrive.renderFooter();
+      renderStorage();
     }).catch(() => {});
   }
 }
 
+// Drive quota card: one segmented bar, color-coded like the file tiles.
+function renderStorage() {
+  const el = $('#storage');
+  const q = S.quota;
+  if (!S.auth.loggedIn || !q) {
+    el.hidden = true;
+    return;
+  }
+  const usage = Number(q.usage || 0);
+  const drive = Number(q.usageInDrive || 0);
+  const trash = Number(q.usageInDriveTrash || 0);
+  const limit = q.limit ? Number(q.limit) : null;
+  const other = Math.max(0, usage - drive);
+  const total = limit || Math.max(usage, 1);
+  const seg = (v, c) => (v > 0 ? `<i style="width:${Math.max(1, (v / total) * 100)}%;background:${c}"></i>` : '');
+  el.hidden = false;
+  el.innerHTML = `<div class="st-label">Dung lượng Drive</div>
+    <div class="st-num">${fmtSize(usage)} <small>${limit ? `/ ${fmtSize(limit)}` : 'không giới hạn'}</small></div>
+    <div class="st-bar">${seg(Math.max(0, drive - trash), 'var(--accent)')}${seg(trash, 'var(--hot)')}${seg(other, 'var(--warn)')}</div>
+    <div class="st-legend"><span><b style="background:var(--accent)"></b>Drive</span><span><b style="background:var(--hot)"></b>Thùng rác</span><span><b style="background:var(--warn)"></b>Gmail, Ảnh</span></div>`;
+}
+
 function renderAccount() {
   const el = $('#account');
+  el.classList.toggle('on', S.auth.loggedIn);
+  renderStorage();
   if (S.auth.loggedIn) {
     const u = S.auth.user || {};
     const initial = esc((u.displayName || u.emailAddress || '?').trim()[0]?.toUpperCase() || '?');
@@ -831,7 +860,7 @@ function renderAccount() {
     };
   } else {
     el.innerHTML = `<div class="avatar">${icon('cloud', 15)}</div><div class="who"><b>Chưa kết nối</b><span>Google Drive</span></div>
-      <button class="btn small primary block" id="btn-login">Kết nối Google Drive</button>`;
+      <button class="btn small accent block" id="btn-login">Kết nối Google Drive</button>`;
     $('#btn-login', el).onclick = (e) => connect(e.currentTarget);
   }
 }
@@ -881,8 +910,48 @@ function bindSidebar() {
       paneDrive.el.focus();
     };
   }
-  $('#btn-link').onclick = () => openLinkModal();
   $('#btn-settings').onclick = () => openSettings();
+  $('#btn-theme').onclick = () => setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark', true);
+  setTheme(document.documentElement.dataset.theme, false);
+
+  const input = $('#linkbar-input');
+  $('#linkbar').onsubmit = (e) => {
+    e.preventDefault();
+    const text = input.value;
+    input.value = '';
+    input.blur();
+    openLinkModal(text);
+  };
+  input.addEventListener('paste', () => {
+    // Pasting a link is the whole gesture: go straight to the preview.
+    setTimeout(() => {
+      if (LINK_HINT.test(input.value)) $('#linkbar').requestSubmit();
+    }, 0);
+  });
+
+  $('#spine-up').onclick = () => paneLocal.transferSelection();
+  $('#spine-down').onclick = () => paneDrive.transferSelection();
+}
+
+function setTheme(theme, save) {
+  document.documentElement.dataset.theme = theme;
+  if (save) store.set('theme', theme);
+  $('#btn-theme').innerHTML = icon(theme === 'dark' ? 'sun' : 'moon', 16);
+  $('#btn-theme').title = theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối';
+  api.setTheme && api.setTheme(theme).catch(() => {});
+}
+
+// Spine arrows are live only when there is something to send and somewhere to send it.
+function updateSpine() {
+  if (!paneLocal || !paneDrive) return;
+  const upOk = S.auth.loggedIn && isRealFolder(driveCur()) && paneLocal.sel.size > 0 && Boolean(localState.path);
+  const downOk = S.auth.loggedIn && Boolean(localState.path) && paneDrive.sel.size > 0;
+  $('#spine-up').disabled = !upOk;
+  $('#spine-down').disabled = !downOk;
+  const nUp = paneLocal.sel.size;
+  const nDown = paneDrive.sel.size;
+  $('#spine-up').title = nUp ? `Tải ${nUp} mục đã chọn lên Google Drive` : 'Chọn file bên trái để tải lên Drive';
+  $('#spine-down').title = nDown ? `Tải ${nDown} mục đã chọn về máy` : 'Chọn file bên phải để tải về máy';
 }
 
 // ======================================================================= context menus
@@ -951,6 +1020,7 @@ function bindSplitters() {
 
   const drag = (el, onMove, onEnd) => {
     el.addEventListener('mousedown', (e) => {
+      if (e.target.closest('button')) return;
       e.preventDefault();
       const move = (ev) => onMove(ev);
       const up = (ev) => {
@@ -965,7 +1035,7 @@ function bindSplitters() {
     });
   };
   let ratio = store.get('paneRatio', 0.5);
-  drag($('#vsplit'), (e) => {
+  drag($('#spine'), (e) => {
     const r = panes.getBoundingClientRect();
     ratio = setRatio((e.clientX - r.left) / r.width);
   }, () => store.set('paneRatio', ratio));
@@ -984,7 +1054,7 @@ function bindGlobalKeys() {
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l' && !$('#modal-root').children.length) {
       e.preventDefault();
-      openLinkModal();
+      $('#linkbar-input').focus();
     }
   });
   document.addEventListener('paste', (e) => {
@@ -1035,6 +1105,8 @@ async function boot() {
     const { loc, stack } = driveDropTarget(target);
     uploadPaths(paths, loc, stack);
   };
+  paneLocal.onSelect = updateSpine;
+  paneDrive.onSelect = updateSpine;
   paneLocal.onContext = localMenu;
   paneDrive.onContext = driveMenu;
 

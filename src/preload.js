@@ -62,6 +62,8 @@ contextBridge.exposeInMainWorld('api', {
     reveal: (p) => call('local:reveal', p),
     exists: (p) => call('local:exists', p),
   },
+  setTheme: (theme) => call('window:theme', theme),
+  platform: process.platform,
   pickFolder: (defaultPath) => call('dialog:pickFolder', defaultPath),
   openExternal: (url) => call('shell:openExternal', url),
   // Files dropped from Explorer/Finder: File.path no longer exists in modern Electron.
