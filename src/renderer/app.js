@@ -706,6 +706,8 @@ function openSettings() {
       <div class="grid2">
         <label class="field"><span>Số file chạy song song</span>
           <select class="select" id="st-conc">${[1, 2, 3, 4, 5, 6, 8].map((n) => `<option ${sel(n, s.concurrency)}>${n}</option>`).join('')}</select></label>
+        <label class="field"><span>Số kết nối cho mỗi file lớn (≥ 16 MB)</span>
+          <select class="select" id="st-conn">${[1, 2, 4, 6, 8].map((n) => `<option value="${n}" ${sel(n, s.connectionsPerFile)}>${n === 1 ? '1 (tắt tăng tốc)' : n}</option>`).join('')}</select></label>
         <label class="field"><span>Kích thước mỗi phần khi tải lên</span>
           <select class="select" id="st-chunk">${[8, 16, 32, 64, 128].map((n) => `<option value="${n}" ${sel(n, s.uploadChunkMB)}>${n} MB</option>`).join('')}</select></label>
         <label class="field"><span>Khi trùng tên</span>
@@ -759,6 +761,7 @@ function openSettings() {
         apiKey: $('#st-key', modal).value.trim(),
         concurrency: Number($('#st-conc', modal).value),
         uploadChunkMB: Number($('#st-chunk', modal).value),
+        connectionsPerFile: Number($('#st-conn', modal).value),
         conflict: $('#st-conflict', modal).value,
         exportFormat: $('#st-export', modal).value,
         defaultDownloadDir: $('#st-dir', modal).value.trim(),

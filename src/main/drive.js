@@ -288,11 +288,12 @@ class DriveClient {
     });
   }
 
-  // Streams file content starting at byte `start`. Resolves to the Response (status 200 or 206).
-  media(id, { resourceKey, start = 0, signal, acknowledgeAbuse } = {}) {
+  // Streams file content from byte `start` to `end` (inclusive, optional). Resolves to the Response (200 or 206).
+  media(id, { resourceKey, start = 0, end = null, signal, acknowledgeAbuse } = {}) {
+    const ranged = start > 0 || end != null;
     return this.request(`/files/${encodeURIComponent(id)}`, {
       query: { alt: 'media', supportsAllDrives: true, acknowledgeAbuse: acknowledgeAbuse ? 'true' : undefined },
-      headers: start > 0 ? { Range: `bytes=${start}-` } : {},
+      headers: ranged ? { Range: `bytes=${start}-${end ?? ''}` } : {},
       resourceKeys: resourceKey ? [`${id}/${resourceKey}`] : null,
       signal,
     });

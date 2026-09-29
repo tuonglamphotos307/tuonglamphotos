@@ -25,6 +25,7 @@ Phần mềm desktop để **tải xuống / tải lên Google Drive**, ý tư�
   - **tải tiếp từ chỗ bị ngắt**: tải xuống dùng file tạm `.drivedock-part` và HTTP Range; tải lên dùng phiên resumable của Google, nên mất mạng hay tắt app đều không phải làm lại từ đầu;
   - tự thử lại khi mất mạng hoặc khi Google giới hạn tốc độ (backoff tăng dần);
   - hàng đợi được lưu lại, có tuỳ chọn *Tự tiếp tục khi mở app*.
+- **Tăng tốc đa kết nối**: file từ 16 MB trở lên được chia thành nhiều đoạn và tải song song (mặc định 4 kết nối mỗi file, chỉnh được 1–8). Kết nối nào xong sớm sẽ tự nhận nửa phần còn lại của đoạn chậm nhất, nên không có kết nối nào ngồi chờ. Vị trí từng đoạn được lưu lại, nên vẫn tải tiếp được sau khi mất mạng hay tắt app. Nếu máy chủ không hỗ trợ tải theo đoạn thì app tự chuyển về một luồng.
 - **Kiểm tra MD5** sau khi tải xuống, phát hiện được file hỏng.
 - **Google Docs / Sheets / Slides** được xuất sang Office (hoặc PDF / OpenDocument), kể cả file lớn quá giới hạn của API export.
 - **Xử lý trùng tên**: tự đổi tên (`ảnh (1).jpg`), bỏ qua, hoặc ghi đè (trên Drive thì tạo phiên bản mới, không tạo file trùng).
@@ -83,6 +84,7 @@ src/main/        tiến trình chính (Node)
   auth.js        OAuth 2.0 loopback + PKCE, lưu token mã hoá
   drive.js       client Drive REST v3: liệt kê, tải, export, resumable upload, retry
   transfers.js   logic tải xuống / tải lên từng file và thư mục
+  segmented.js   tải một file lớn bằng nhiều kết nối
   queue.js       hàng đợi: song song, tạm dừng, thử lại, lưu trạng thái
   links.js       nhận diện mọi dạng link Google Drive
   local.js       duyệt ổ đĩa trên máy

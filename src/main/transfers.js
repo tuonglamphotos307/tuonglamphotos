@@ -9,9 +9,12 @@ const { Readable, Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 const { DriveError, FOLDER_MIME, SHORTCUT_MIME, isGoogleNative, exportTarget, parseContentDisposition } = require('./drive');
 const { sanitizeName, exists, uniquePath } = require('./fsutil');
+const { downloadSegmented } = require('./segmented');
 
 const PART_EXT = '.drivedock-part';
 const PROGRESS_INTERVAL_MS = 200;
+// Files at least this big are fetched over several connections (Settings → connectionsPerFile).
+const SEGMENTED_MIN_SIZE = 16 * 1024 * 1024;
 
 const MIME_BY_EXT = {
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.gif': 'image/gif', '.webp': 'image/webp',
@@ -170,6 +173,40 @@ function createRunners({ drive, settings }) {
 
     const target = await chooseTarget(task, fileName, ctx);
     if (!target) return { status: 'skipped', note: 'Đã có file trùng tên' };
+
+    const connections = settings.get('connectionsPerFile') || 1;
+    if (!native && connections > 1 && task.size >= SEGMENTED_MIN_SIZE && !task.noSegments) {
+      // An old single-stream .part (from before this feature or a fallback) keeps its own resume path.
+      const partial = !task.segments && (await fs.promises.stat(task.partPath).catch(() => null));
+      if (!partial || partial.size === 0) {
+        ctx.update({ note: `${connections} kết nối song song` });
+        let ok;
+        try {
+          ok = await downloadSegmented(task, ctx, { drive, connections, markRetryable });
+        } catch (e) {
+          if (e.reason === 'cannotDownloadAbusiveFile' && !task.acknowledgeAbuse) {
+            ctx.update({ acknowledgeAbuse: true });
+            throw new DriveError('Google cảnh báo file này, đang tải lại với xác nhận.', { retryable: true });
+          }
+          throw e;
+        }
+        if (ok) {
+          if (task.md5 && settings.get('verifyMd5')) {
+            ctx.update({ note: 'Đang kiểm tra MD5…' });
+            const hash = await md5File(task.partPath, ctx.signal);
+            if (hash.digest('hex') !== task.md5) {
+              await fs.promises.rm(task.partPath, { force: true });
+              ctx.update({ transferred: 0, note: null });
+              throw new DriveError('Sai mã kiểm tra MD5, đang tải lại.', { retryable: true });
+            }
+          }
+          const finalPath = await finishFile(task, target);
+          ctx.update({ finalPath, dest: finalPath, note: null });
+          return { note: `Tải bằng ${connections} kết nối` };
+        }
+        // Server ignored Range: fall through to a single stream.
+      }
+    }
 
     // Resume from an existing .part file when the server supports ranges (not for exports).
     let start = 0;

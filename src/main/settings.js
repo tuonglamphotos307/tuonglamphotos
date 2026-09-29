@@ -8,6 +8,7 @@ const DEFAULTS = {
   clientSecret: '',
   apiKey: '',
   concurrency: 3,
+  connectionsPerFile: 4,
   uploadChunkMB: 16,
   conflict: 'rename', // rename | overwrite | skip
   exportFormat: 'office', // office | pdf | open
@@ -36,6 +37,7 @@ class Settings {
     for (const [k, v] of Object.entries(patch || {})) {
       if (k in DEFAULTS) this.data[k] = v;
     }
+    this.data.connectionsPerFile = Math.min(8, Math.max(1, Math.round(Number(this.data.connectionsPerFile) || DEFAULTS.connectionsPerFile)));
     this.data.concurrency = Math.min(8, Math.max(1, Number(this.data.concurrency) || DEFAULTS.concurrency));
     // Resumable upload chunks must be multiples of 256 KiB; whole MB always are.
     this.data.uploadChunkMB = Math.min(256, Math.max(1, Math.round(Number(this.data.uploadChunkMB) || DEFAULTS.uploadChunkMB)));
