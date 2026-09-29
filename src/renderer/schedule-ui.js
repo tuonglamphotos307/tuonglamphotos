@@ -51,10 +51,24 @@ function openScheduleModal() {
   const { modal, close } = openModal(`
     <div class="modal-head"><span class="pane-icon drive" data-icon="clock"></span>
       <div><h3>Lịch tự động</h3><p>Tải link hoặc đồng bộ thư mục theo giờ. Lịch chỉ chạy khi DriveDock đang mở; nếu lỡ giờ vì đã tắt app, lịch sẽ chạy bù ngay khi anh mở lại.</p></div></div>
-    <div class="modal-body"><div class="sched-list" id="sched-list"></div></div>
+    <div class="modal-body"><div class="bg-note" id="bg-note" hidden></div><div class="sched-list" id="sched-list"></div></div>
     <div class="modal-foot"><div class="spacer"></div><button class="btn" data-close>Đóng</button><button class="btn primary" id="sched-add"><span data-icon="plus"></span>Thêm lịch</button></div>`,
   { onClose: () => { Sched.render = null; } });
   const list = $('#sched-list', modal);
+  const note = $('#bg-note', modal);
+  if (!S.settings.closeToTray) {
+    note.hidden = false;
+    note.innerHTML = `${icon('alert', 15)}<span>Lịch chỉ chạy khi DriveDock đang mở. Bật chạy nền để đóng cửa sổ mà lịch vẫn hoạt động.</span><button class="btn small" id="bg-on">Bật chạy nền</button>`;
+    $('#bg-on', modal).onclick = async () => {
+      try {
+        S.settings = await api.settings.set({ closeToTray: true, startWithSystem: true });
+        note.hidden = true;
+        toast('Đã bật chạy nền: đóng cửa sổ sẽ thu vào khay, và DriveDock tự mở khi đăng nhập máy.', 'ok', 6000);
+      } catch (e) {
+        toast(e.message, 'error');
+      }
+    };
+  }
 
   Sched.render = () => {
     if (!Sched.jobs.length) {

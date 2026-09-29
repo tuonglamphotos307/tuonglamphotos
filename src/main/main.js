@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, nativeTheme, Tray, Menu, nativeImage } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -36,6 +36,10 @@ let drive;
 let queue;
 let scheduler;
 let quitting = false;
+let tray = null;
+let trayHintShown = false;
+// Launched by the OS at sign-in (see applyRuntimeSettings): start without showing the window.
+const startHidden = process.argv.includes('--hidden');
 
 const dataDir = () => app.getPath('userData');
 
@@ -54,6 +58,7 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 640,
     backgroundColor: chrome.color,
+    show: !(startHidden && settings.get('closeToTray')),
     autoHideMenuBar: true,
     title: 'DriveDock',
     icon: path.join(__dirname, '..', '..', 'build', 'icon.png'),
@@ -82,6 +87,18 @@ function createWindow() {
   win.on('close', (e) => {
     const b = win.getNormalBounds();
     fs.writeFileSync(stateFile, JSON.stringify({ ...b, maximized: win.isMaximized() }));
+    if (!quitting && tray && settings.get('closeToTray')) {
+      // Keep running in the tray so schedules and transfers continue.
+      e.preventDefault();
+      win.hide();
+      if (!trayHintShown) {
+        trayHintShown = true;
+        if (process.platform === 'win32') {
+          tray.displayBalloon({ title: 'DriveDock vẫn đang chạy', content: 'Lịch tự động và hàng đợi vẫn hoạt động. Bấm vào biểu tượng ở khay để mở lại hoặc thoát.' });
+        }
+      }
+      return;
+    }
     if (!quitting && queue.hasActive()) {
       const choice = dialog.showMessageBoxSync(win, {
         type: 'question',
@@ -99,6 +116,55 @@ function createWindow() {
     }
     quitting = true;
   });
+}
+
+function showWindow() {
+  if (!win) return;
+  if (win.isMinimized()) win.restore();
+  win.show();
+  win.focus();
+}
+
+function quitApp() {
+  quitting = true;
+  app.quit();
+}
+
+function trayMenu() {
+  return Menu.buildFromTemplate([
+    { label: 'Mở DriveDock', click: showWindow },
+    { type: 'separator' },
+    { label: 'Tạm dừng tất cả', click: () => queue.pause('all') },
+    { label: 'Tiếp tục tất cả', click: () => queue.resume('all') },
+    { type: 'separator' },
+    { label: 'Thoát hẳn', click: quitApp },
+  ]);
+}
+
+// Creates or removes the tray icon and the sign-in launch entry to match the settings.
+function applyRuntimeSettings() {
+  if (settings.get('closeToTray') && !tray) {
+    const size = process.platform === 'darwin' ? 18 : 16;
+    const image = nativeImage.createFromPath(path.join(__dirname, '..', '..', 'build', 'icon.png')).resize({ width: size, height: size });
+    tray = new Tray(image);
+    tray.setToolTip('DriveDock');
+    tray.setContextMenu(trayMenu());
+    tray.on('click', showWindow);
+  } else if (!settings.get('closeToTray') && tray) {
+    tray.destroy();
+    tray = null;
+    if (win && !win.isVisible()) showWindow(); // never leave the app running with no way back in
+  }
+  // Only a packaged app registers itself; in development this would register the Electron binary.
+  if (app.isPackaged) {
+    app.setLoginItemSettings({ openAtLogin: Boolean(settings.get('startWithSystem')), args: ['--hidden'] });
+  }
+}
+
+function updateTray(stats) {
+  if (!tray) return;
+  const mb = (stats.speed / 1048576).toFixed(1);
+  tray.setToolTip(stats.running ? `DriveDock — ${stats.running} file đang chạy · ${mb} MB/s` : stats.queued ? `DriveDock — ${stats.queued} file đang chờ` : 'DriveDock');
 }
 
 function send(channel, payload) {
@@ -242,6 +308,7 @@ function registerIpc() {
   handle('settings:get', () => settings.get());
   handle('settings:set', (patch) => {
     const out = settings.set(patch);
+    applyRuntimeSettings();
     queue._schedule();
     send('auth:changed', auth.status());
     return out;
@@ -382,22 +449,21 @@ app.whenReady().then(() => {
     getAutoResume: () => settings.get('autoResume'),
     gate: () => !settings.get('windowEnabled') || inWindow(Date.now(), settings.get('windowStart'), settings.get('windowEnd')),
   });
-  queue.on('update', (u) => send('queue:update', u));
+  queue.on('update', (u) => {
+    send('queue:update', u);
+    updateTray(u.stats);
+  });
   scheduler = new Scheduler({ file: path.join(dataDir(), 'schedule.json'), run: runScheduledJob, onChange: (jobs) => send('schedule:update', jobs) });
 
   registerIpc();
+  applyRuntimeSettings();
   createWindow();
   queue._schedule();
   scheduler.start();
   // Re-evaluate the time window regularly so queued work starts when it opens and pauses when it closes.
   setInterval(() => queue._schedule(), 20_000);
 
-  app.on('second-instance', () => {
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-    }
-  });
+  app.on('second-instance', showWindow);
 });
 
 app.on('before-quit', () => {

@@ -801,6 +801,9 @@ function openSettings() {
         <label class="field"><span>Đến</span><input class="input" id="st-we" type="time" /></label>
       </div>
       <small style="color:var(--muted);margin-top:-8px">Ngoài khung giờ, file đang chạy được tạm dừng (giữ nguyên tiến độ) và không bắt đầu file mới. Có thể qua nửa đêm, ví dụ 23:00 đến 06:00.</small>
+      <div class="section-title">Chạy nền</div>
+      <label class="check"><input type="checkbox" id="st-tray" ${s.closeToTray ? 'checked' : ''} /> Bấm nút đóng cửa sổ thì thu vào khay hệ thống, không thoát (để lịch tự động vẫn chạy)</label>
+      <label class="check"><input type="checkbox" id="st-boot" ${s.startWithSystem ? 'checked' : ''} /> Tự mở DriveDock (chạy ẩn) khi đăng nhập máy tính</label>
       <label class="check"><input type="checkbox" id="st-md5" ${s.verifyMd5 ? 'checked' : ''} /> Kiểm tra MD5 sau khi tải xuống (phát hiện file hỏng)</label>
       <label class="check"><input type="checkbox" id="st-auto" ${s.autoResume ? 'checked' : ''} /> Tự tiếp tục hàng đợi khi mở app</label>
     </div>
@@ -844,6 +847,8 @@ function openSettings() {
         connectionsPerFile: Number($('#st-conn', modal).value),
         downloadLimitKBps: Number($('#st-dl', modal).value) || 0,
         uploadLimitKBps: Number($('#st-ul', modal).value) || 0,
+        closeToTray: $('#st-tray', modal).checked,
+        startWithSystem: $('#st-boot', modal).checked,
         windowEnabled: $('#st-win', modal).checked,
         windowStart: $('#st-ws', modal).value || '23:00',
         windowEnd: $('#st-we', modal).value || '06:00',

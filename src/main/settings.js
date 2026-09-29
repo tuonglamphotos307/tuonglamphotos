@@ -11,6 +11,8 @@ const DEFAULTS = {
   connectionsPerFile: 4,
   downloadLimitKBps: 0, // 0 = unlimited
   uploadLimitKBps: 0,
+  closeToTray: false, // closing the window keeps DriveDock running in the tray (schedules keep working)
+  startWithSystem: false, // launch hidden when the user signs in
   windowEnabled: false, // only transfer between windowStart and windowEnd
   windowStart: '23:00',
   windowEnd: '06:00',
