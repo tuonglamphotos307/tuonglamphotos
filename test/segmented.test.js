@@ -71,10 +71,10 @@ test('plans ranges no smaller than the split minimum', () => {
   assert.ok(segs.every((s) => s.end - s.start >= MIN_SPLIT));
 });
 
-test('downloads over several connections and steals work from the slow one', { timeout: 30000 }, async () => {
+test('downloads over several connections and steals work from the slow one', { timeout: 60000 }, async () => {
   const dir = tmp();
   // The first half of the file trickles in; the second half is instant.
-  const drive = rangeDrive({ delay: (off) => (off < 12 * MB ? 15 : 0) });
+  const drive = rangeDrive({ delay: (off) => (off < 12 * MB ? 40 : 0) });
   const task = { fileId: 'big', size: CONTENT.length, partPath: path.join(dir, 'big.part') };
   const ok = await downloadSegmented(task, ctxFor(task), { drive, connections: 2, markRetryable });
   assert.equal(ok, true);

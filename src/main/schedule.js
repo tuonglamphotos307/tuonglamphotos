@@ -62,11 +62,12 @@ function inWindow(now, start, end) {
 
 class Scheduler {
   // run(job) => Promise<string | void>: does the work, resolves to a short result message.
-  constructor({ file, run, now = () => Date.now(), onChange = () => {} }) {
+  constructor({ file, run, now = () => Date.now(), onChange = () => {}, onResult = () => {} }) {
     this.file = file;
     this.runJob = run;
     this.now = now;
     this.onChange = onChange;
+    this.onResult = onResult; // (job, result) after every run, manual or scheduled
     this.jobs = [];
     this.running = new Set();
     this.timer = null;
@@ -172,6 +173,11 @@ class Scheduler {
     job.lastResult = result;
     this.running.delete(job.id);
     this._save();
+    try {
+      this.onResult(job, result, { manual });
+    } catch {
+      // a broken listener must not affect scheduling
+    }
     return result;
   }
 }

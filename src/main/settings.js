@@ -11,6 +11,7 @@ const DEFAULTS = {
   connectionsPerFile: 4,
   downloadLimitKBps: 0, // 0 = unlimited
   uploadLimitKBps: 0,
+  notifications: true, // OS notification when a batch finishes or a scheduled job fails
   closeToTray: false, // closing the window keeps DriveDock running in the tray (schedules keep working)
   startWithSystem: false, // launch hidden when the user signs in
   windowEnabled: false, // only transfer between windowStart and windowEnd

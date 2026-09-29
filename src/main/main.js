@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, nativeTheme, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, safeStorage, nativeTheme, Tray, Menu, nativeImage, Notification } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
@@ -13,6 +13,7 @@ const { parseManyLinks } = require('./links');
 const local = require('./local');
 const { buildPlan } = require('./sync');
 const { Scheduler, inWindow } = require('./schedule');
+const { summarizeBatch, formatBatch } = require('./notify');
 const crypto = require('crypto');
 
 if (!app.requestSingleInstanceLock()) {
@@ -159,6 +160,28 @@ function applyRuntimeSettings() {
   if (app.isPackaged) {
     app.setLoginItemSettings({ openAtLogin: Boolean(settings.get('startWithSystem')), args: ['--hidden'] });
   }
+}
+
+// Shows an OS notification unless the user is looking at the app or turned notifications off.
+function notify(title, body) {
+  if (!settings.get('notifications') || !Notification.isSupported()) return;
+  if (win && win.isVisible() && win.isFocused()) return;
+  const n = new Notification({ title, body, icon: path.join(__dirname, '..', '..', 'build', 'icon.png') });
+  n.on('click', showWindow);
+  n.show();
+}
+
+// Tells the user once when a burst of transfers ends, instead of once per file.
+let batchStart = 0;
+let wasBusy = false;
+function watchBatches(stats) {
+  const busy = stats.running > 0 || (stats.queued > 0 && !stats.gated);
+  if (busy && !wasBusy) batchStart = Date.now();
+  if (!busy && wasBusy && !stats.gated) {
+    const msg = formatBatch(summarizeBatch(queue.tasks.values(), batchStart));
+    if (msg) notify(msg.title, msg.body);
+  }
+  wasBusy = busy || (wasBusy && stats.gated && stats.queued > 0);
 }
 
 function updateTray(stats) {
@@ -452,8 +475,14 @@ app.whenReady().then(() => {
   queue.on('update', (u) => {
     send('queue:update', u);
     updateTray(u.stats);
+    watchBatches(u.stats);
   });
-  scheduler = new Scheduler({ file: path.join(dataDir(), 'schedule.json'), run: runScheduledJob, onChange: (jobs) => send('schedule:update', jobs) });
+  scheduler = new Scheduler({ file: path.join(dataDir(), 'schedule.json'), run: runScheduledJob,
+    onChange: (jobs) => send('schedule:update', jobs),
+    onResult: (job, result, { manual }) => {
+      if (!result.ok && !manual) notify(`Lịch "${job.name}" bị lỗi`, result.message);
+    },
+  });
 
   registerIpc();
   applyRuntimeSettings();
