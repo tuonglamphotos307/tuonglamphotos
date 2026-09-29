@@ -675,6 +675,68 @@ function openLinkModal(prefill = '') {
   if (prefill) resolveNow();
 }
 
+// ======================================================================= folder sync dialog
+
+async function openSyncModal() {
+  const loc = driveCur();
+  if (!S.auth.loggedIn) return toast('Hãy kết nối Google Drive trước.', 'error');
+  if (!localState.path) return toast('Hãy mở một thư mục ở khung "Máy của anh".', 'error');
+  if (!isRealFolder(loc)) return toast('Hãy mở một thư mục trong Drive (không phải danh sách "Được chia sẻ").', 'error');
+
+  const label = driveLabel(driveState.stack);
+  const { modal, close } = openModal(`
+    <div class="modal-head"><span class="pane-icon drive" data-icon="refresh"></span>
+      <div><h3>Đồng bộ thư mục</h3><p>${esc(localState.path)} ⇄ ${esc(label)}<br />Chỉ copy phần còn thiếu ở mỗi bên. Không xoá gì cả.</p></div></div>
+    <div class="modal-body" id="sy-body"><div style="display:flex;gap:12px;align-items:center;color:var(--muted)"><div class="spinner"></div>Đang so sánh hai thư mục…</div></div>
+    <div class="modal-foot"><small id="sy-note" style="color:var(--muted)"></small><div class="spacer"></div>
+      <button class="btn" data-close>Đóng</button><button class="btn primary" id="sy-go" disabled>Đồng bộ</button></div>`);
+
+  let plan;
+  try {
+    plan = await api.sync.plan({ localDir: localState.path, folder: { id: loc.id, driveId: loc.driveId || null, resourceKey: loc.resourceKey || null }, label });
+  } catch (e) {
+    $('#sy-body', modal).innerHTML = `<div class="res-item bad"><span></span><div class="meta">${esc(e.message)}</div><span></span></div>`;
+    return;
+  }
+  const body = $('#sy-body', modal);
+  const go = $('#sy-go', modal);
+  const rows = [
+    ...plan.upload.map((x) => ['up', 'arrowUp', x]),
+    ...plan.download.map((x) => ['down', 'arrowDown', x]),
+    ...plan.differ.map((x) => ['differ', 'alert', { rel: x.rel, size: null, note: x.newer === 'local' ? 'bản máy mới hơn' : 'bản Drive mới hơn' }]),
+  ];
+  const total = plan.upload.length + plan.download.length;
+  body.innerHTML = `
+    <div class="sync-chips">
+      <div class="sync-chip up"><b>${plan.upload.length}</b><span>tải lên · ${fmtSize(plan.totals.uploadBytes)}</span></div>
+      <div class="sync-chip down"><b>${plan.download.length}</b><span>tải về · ${fmtSize(plan.totals.downloadBytes)}</span></div>
+      <div class="sync-chip"><b>${plan.differ.length}</b><span>khác nhau</span></div>
+      <div class="sync-chip"><b>${plan.same}</b><span>giống nhau</span></div>
+    </div>
+    ${rows.length ? `<div class="sync-list">${rows.slice(0, 300).map(([cls, ic, x]) => `<div class="sync-row ${cls}">${icon(ic, 14)}<span class="nm" title="${esc(x.rel)}">${esc(x.rel)}${x.isDir ? '/' : ''}</span><span class="sz">${esc(x.note || (x.isDir ? 'thư mục' : fmtSize(x.size)))}</span></div>`).join('')}${rows.length > 300 ? `<div class="sync-row"><span></span><span class="nm">… và ${rows.length - 300} mục nữa</span><span></span></div>` : ''}</div>` : '<div class="help">Hai thư mục đã giống nhau, không có gì cần đồng bộ.</div>'}
+    ${plan.differ.length ? `<label class="check"><input type="checkbox" id="sy-over" /> Với ${plan.differ.length} file khác nhau: thay bản cũ bằng bản mới hơn (bản Drive cũ được giữ trong lịch sử phiên bản)</label>` : ''}
+    ${plan.conflicts.length ? `<small style="color:var(--warn)">${plan.conflicts.length} mục bị bỏ qua vì một bên là file, bên kia là thư mục.</small>` : ''}
+    ${plan.skipped ? `<small style="color:var(--muted)">${plan.skipped} file Google Docs/Sheets/Slides và shortcut không được đồng bộ.</small>` : ''}`;
+  const over = $('#sy-over', modal);
+  const refresh = () => {
+    const n = total + (over && over.checked ? plan.differ.length : 0);
+    go.disabled = n === 0;
+    go.textContent = n ? `Đồng bộ ${n} mục` : 'Đồng bộ';
+  };
+  if (over) over.onchange = refresh;
+  refresh();
+  go.onclick = async () => {
+    try {
+      const n = await api.sync.run({ id: plan.id, overwrite: Boolean(over && over.checked) });
+      close();
+      toast(`Đã thêm ${n} mục vào hàng đợi.`, 'ok');
+      expandQueue();
+    } catch (e) {
+      toast(e.message, 'error');
+    }
+  };
+}
+
 // ======================================================================= settings dialog
 
 function openSettings() {
@@ -940,6 +1002,7 @@ function bindSidebar() {
     }, 0);
   });
 
+  $('#spine-sync').onclick = () => openSyncModal();
   $('#spine-up').onclick = () => paneLocal.transferSelection();
   $('#spine-down').onclick = () => paneDrive.transferSelection();
 }

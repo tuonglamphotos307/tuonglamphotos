@@ -46,6 +46,10 @@ contextBridge.exposeInMainWorld('api', {
     download: (items, destDir) => call('transfer:download', { items, destDir }),
     upload: (paths, parent) => call('transfer:upload', { paths, parent }),
   },
+  sync: {
+    plan: (args) => call('sync:plan', args),
+    run: (args) => call('sync:run', args),
+  },
   queue: {
     snapshot: () => call('queue:snapshot'),
     action: (action, ids) => call('queue:action', { action, ids }),

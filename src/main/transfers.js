@@ -114,7 +114,7 @@ function createRunners({ drive, settings }) {
     await fs.promises.mkdir(task.destDir, { recursive: true });
     let target = path.join(task.destDir, fileName);
     if (await exists(target)) {
-      const policy = settings.get('conflict');
+      const policy = task.conflict || settings.get('conflict');
       if (policy === 'skip') return null;
       if (policy === 'rename') target = await uniquePath(task.destDir, fileName);
     }
@@ -123,7 +123,7 @@ function createRunners({ drive, settings }) {
   }
 
   async function finishFile(task, target) {
-    if (settings.get('conflict') === 'rename' && (await exists(target))) {
+    if ((task.conflict || settings.get('conflict')) === 'rename' && (await exists(target))) {
       // Someone created the file while we were downloading: don't clobber it.
       target = await uniquePath(path.dirname(target), path.basename(target));
     }
@@ -369,7 +369,7 @@ function createRunners({ drive, settings }) {
       let existingId = null;
       const existing = (await drive.findChild(task.parentId, name, task.driveId)).filter((f) => f.mimeType !== FOLDER_MIME);
       if (existing.length) {
-        const policy = settings.get('conflict');
+        const policy = task.conflict || settings.get('conflict');
         if (policy === 'skip') return { status: 'skipped', note: 'Đã có file trùng tên trên Drive' };
         if (policy === 'overwrite') existingId = existing[0].id;
         else name = await uniqueDriveName(task.parentId, task.driveId, name);

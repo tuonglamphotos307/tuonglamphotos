@@ -11,6 +11,8 @@ const { TransferQueue } = require('./queue');
 const { createRunners, downloadSpec, uploadSpec } = require('./transfers');
 const { parseManyLinks } = require('./links');
 const local = require('./local');
+const { buildPlan } = require('./sync');
+const crypto = require('crypto');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -236,6 +238,48 @@ function registerIpc() {
   handle('transfer:upload', ({ paths, parent }) => {
     const specs = paths.map((p) => uploadSpec(p, fs.statSync(p).isDirectory(), parent));
     return queue.add(specs).length;
+  });
+
+  // ---- folder sync: build a plan (read-only), then run it on confirmation
+  const plans = new Map();
+  handle('sync:plan', async ({ localDir, folder, label }) => {
+    if (!drive.canUseApi) throw new Error('Cần kết nối Google Drive để đồng bộ.');
+    const plan = await buildPlan({ drive, localDir, folder });
+    const id = crypto.randomUUID();
+    plans.set(id, { plan, label, localDir });
+    if (plans.size > 5) plans.delete(plans.keys().next().value);
+    const brief = (x) => ({ rel: x.rel, isDir: x.isDir, size: x.size });
+    return {
+      id,
+      upload: plan.upload.map(brief),
+      download: plan.download.map(brief),
+      differ: plan.differ.map((d) => ({ rel: d.rel, newer: d.newer, localSize: d.local.size, remoteSize: d.remote.size })),
+      same: plan.same,
+      skipped: plan.skipped.length,
+      conflicts: plan.conflicts,
+      totals: plan.totals,
+    };
+  });
+  handle('sync:run', ({ id, overwrite }) => {
+    const entry = plans.get(id);
+    if (!entry) throw new Error('Kế hoạch đồng bộ đã hết hạn, hãy quét lại.');
+    const { plan, label } = entry;
+    plans.delete(id);
+    const specs = [];
+    for (const u of plan.upload) {
+      specs.push(uploadSpec(u.localPath, u.isDir, { id: u.parentId, driveId: u.driveId, label: path.posix.join(label, path.posix.dirname(u.rel) === '.' ? '' : path.posix.dirname(u.rel)) }));
+    }
+    for (const d of plan.download) specs.push({ ...downloadSpec(d.item, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}` });
+    if (overwrite) {
+      for (const d of plan.differ) {
+        if (d.newer === 'local') {
+          specs.push({ ...uploadSpec(d.local.path, false, { id: d.parentId, driveId: d.driveId, label }), conflict: 'overwrite' });
+        } else {
+          specs.push({ ...downloadSpec(d.remote, d.destDir, { sourcePrefix: label }), source: `${label}/${d.rel}`, conflict: 'overwrite' });
+        }
+      }
+    }
+    return specs.length ? queue.add(specs).length : 0;
   });
 
   handle('queue:snapshot', () => queue.snapshot());
